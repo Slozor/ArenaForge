@@ -99,6 +99,8 @@ func _recalculate_stats() -> void:
 	var star_multiplier: float = 1.0
 	if star_level == 2:
 		star_multiplier = 1.8
+	elif star_level >= 3:
+		star_multiplier = 3.2
 
 	max_health = int(float(base_max_health) * star_multiplier)
 	attack_damage = int(float(base_attack_damage) * star_multiplier)
@@ -163,7 +165,7 @@ func equip_item(item_id: String, item_data: Dictionary) -> void:
 
 
 func upgrade_to_star(level: int) -> void:
-	star_level = level
+	star_level = clampi(level, 1, 3)
 	_recalculate_stats()
 	current_health = get_max_health()
 	health_changed.emit(current_health, get_max_health())
@@ -202,6 +204,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var body_color: Color = _race_color()
 	var accent_color: Color = _trait_color()
+	var cost_color: Color = _cost_color()
 	var shadow_rect: Rect2 = Rect2(Vector2(-BODY_RADIUS, BODY_RADIUS * 0.65), Vector2(BODY_RADIUS * 2.0, 10))
 	draw_ellipse(
 		shadow_rect.position + shadow_rect.size * 0.5,
@@ -210,7 +213,8 @@ func _draw() -> void:
 		Color(0, 0, 0, 0.28),
 		true
 	)
-	draw_circle(Vector2.ZERO, BODY_RADIUS + 3.0, body_color.darkened(0.55))
+	draw_circle(Vector2.ZERO, BODY_RADIUS + 5.0, cost_color.darkened(0.35))
+	draw_circle(Vector2.ZERO, BODY_RADIUS + 2.0, body_color.darkened(0.55))
 	draw_circle(Vector2.ZERO, BODY_RADIUS, body_color)
 	draw_circle(Vector2.ZERO, BODY_RADIUS * 0.45, accent_color)
 	draw_arc(Vector2.ZERO, BODY_RADIUS + 5.0, 0.0, TAU, 24, Color(1, 1, 1, 0.08), 2.0)
@@ -223,6 +227,13 @@ func _draw() -> void:
 
 	if equipped_item != "":
 		draw_circle(Vector2(18, -18), 5.0, Color(1.0, 0.85, 0.35, 0.95))
+
+	var font: Font = ThemeDB.fallback_font
+	if font != null:
+		var short_name: String = unit_name.substr(0, mini(3, unit_name.length())).to_upper()
+		draw_string(font, Vector2(-14, 5), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.06, 0.08, 0.12, 0.95))
+		if star_level > 1:
+			draw_string(font, Vector2(-8, 28), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.88, 0.32, 0.95))
 
 	if _burn_strength > 0.0:
 		draw_circle(Vector2.ZERO, BODY_RADIUS + 8.0, Color(1.0, 0.45, 0.18, 0.16 * _burn_strength))
@@ -295,3 +306,12 @@ func _trait_color() -> Color:
 		"guardian": return Color(1.0, 0.92, 0.58)
 		"assassin", "duelist": return Color(0.98, 0.48, 0.66)
 		_: return Color(0.92, 0.92, 0.96)
+
+
+func _cost_color() -> Color:
+	match cost:
+		1: return Color(0.68, 0.70, 0.75)
+		2: return Color(0.22, 0.78, 0.38)
+		3: return Color(0.30, 0.54, 0.96)
+		4: return Color(0.72, 0.34, 0.96)
+		_: return Color(0.92, 0.82, 0.46)

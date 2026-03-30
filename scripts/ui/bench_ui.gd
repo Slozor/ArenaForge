@@ -345,6 +345,7 @@ func on_unit_placed_on_board(unit) -> void:
 		_units[idx] = null
 		_refresh_slot(idx)
 	unit.visible = true
+	_check_merge(unit)
 	_selected_slot = -1
 	_refresh_overview()
 
@@ -357,50 +358,15 @@ func receive_unit_from_board(unit) -> void:
 # ── Merge (star upgrade) ───────────────────────────────────────────────────
 
 func _check_merge(new_unit) -> void:
-	# Count how many of the same unit_id we have (star_level 1 only)
-	if new_unit.star_level != 1:
+	if new_unit.star_level >= 3:
 		return
-
-	var matches: Array = []
-	for i in BENCH_SLOTS:
-		var u = _units[i]
-		if u != null and u.unit_id == new_unit.unit_id and u.star_level == 1:
-			matches.append(i)
-
-	if matches.size() < 3:
-		return
-
-	# Upgrade: keep first slot, remove other two
-	var keep_idx: int = matches[0]
-	var base_unit = _units[keep_idx]
-	base_unit.upgrade_to_star(2)
-
-	for i in range(1, 3):
-		var remove_idx: int = matches[i]
-		_units[remove_idx] = null
-		_refresh_slot(remove_idx)
-
-	_refresh_slot(keep_idx)
-	_show_upgrade_flash(keep_idx)
+	_try_merge_chain_for_unit(new_unit)
 
 
 func _apply_direct_merge(unit_id: String) -> void:
-	var matches: Array[int] = _find_matching_slots(unit_id)
-	if matches.size() < 2:
-		return
-
-	var keep_idx: int = matches[0]
-	var remove_idx: int = matches[1]
-	var base_unit = _units[keep_idx]
-	var removed_unit = _units[remove_idx]
-	if base_unit == null or removed_unit == null:
-		return
-
-	base_unit.upgrade_to_star(mini(base_unit.star_level + 1, 2))
-	_units[remove_idx] = null
-	_refresh_slot(remove_idx)
-	_refresh_slot(keep_idx)
-	_show_upgrade_flash(keep_idx)
+	var candidates: Array = _get_merge_candidates(unit_id, 1)
+	if candidates.size() >= 3:
+		_try_merge_chain_for_unit(candidates[0])
 
 
 func _show_upgrade_flash(slot_idx: int) -> void:
@@ -459,7 +425,7 @@ func _refresh_slot(index: int) -> void:
 	bg.modulate = tier_color.lightened(0.2)
 	portrait.modulate = tier_color.lightened(0.05)
 	name_lbl.text = unit.unit_name
-	star_lbl.text = "★" if unit.star_level == 2 else ""
+	star_lbl.text = "★".repeat(unit.star_level - 1) if unit.star_level > 1 else ""
 	sell_lbl.text = "%dg" % (cost * unit.star_level)
 	var tooltip: String = DataManager.get_unit_tooltip(unit.unit_id)
 	slot.tooltip_text = tooltip
@@ -495,7 +461,60 @@ func _find_matching_slots(unit_id: String) -> Array[int]:
 
 
 func _can_merge_unit(unit_id: String) -> bool:
-	return _find_matching_slots(unit_id).size() >= 2
+	return _get_merge_candidates(unit_id, 1).size() >= 2
+
+
+func _try_merge_chain_for_unit(unit) -> void:
+	var current_unit = unit
+	while current_unit != null and current_unit.star_level < 3:
+		var candidates: Array = _get_merge_candidates(current_unit.unit_id, current_unit.star_level)
+		if candidates.size() < 3:
+			break
+		current_unit = _merge_candidates(candidates)
+
+
+func _merge_candidates(candidates: Array):
+	var keeper = candidates[0]
+	var next_star: int = clampi(keeper.star_level + 1, 1, 3)
+	keeper.upgrade_to_star(next_star)
+	keeper.visible = not keeper.is_on_bench
+	if keeper.has_method("play_heal_pulse"):
+		keeper.play_heal_pulse()
+
+	for i in range(1, 3):
+		var merged_unit = candidates[i]
+		if _board_ui != null and _board_ui.remove_unit_instance(merged_unit):
+			if is_instance_valid(merged_unit):
+				merged_unit.queue_free()
+			continue
+		var slot_idx: int = _units.find(merged_unit)
+		if slot_idx != -1:
+			_units[slot_idx] = null
+			_refresh_slot(slot_idx)
+		if is_instance_valid(merged_unit):
+			merged_unit.queue_free()
+
+	var keeper_slot: int = _units.find(keeper)
+	if keeper_slot != -1:
+		_refresh_slot(keeper_slot)
+		_show_upgrade_flash(keeper_slot)
+	_refresh_overview()
+	return keeper
+
+
+func _get_merge_candidates(unit_id: String, star_level: int) -> Array:
+	var board_candidates: Array = []
+	if _board_ui != null:
+		for unit in _board_ui.get_all_placed_units():
+			if unit != null and unit.unit_id == unit_id and unit.star_level == star_level:
+				board_candidates.append(unit)
+
+	var bench_candidates: Array = []
+	for unit in _units:
+		if unit != null and unit.unit_id == unit_id and unit.star_level == star_level:
+			bench_candidates.append(unit)
+
+	return board_candidates + bench_candidates
 
 
 func _bind_scene_peers() -> void:

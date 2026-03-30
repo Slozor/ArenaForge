@@ -405,6 +405,18 @@ func update_synergies(board_units: Array) -> void:
 			(e["count"] as Label).add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
 			(e["icon"] as TextureRect).modulate = Color(1.0, 0.92, 0.55)
 
+	for id in _trait_entries:
+		var entry: Dictionary = _trait_entries[id]
+		var count_value: int = int(all_counts.get(id, 0))
+		var should_show: bool = count_value > 0
+		(entry["bg"] as ColorRect).visible = should_show
+		(entry["icon"] as TextureRect).visible = should_show
+		(entry["label"] as Label).visible = should_show
+		(entry["count"] as Label).visible = should_show
+		(entry["hitbox"] as Button).visible = should_show
+
+	_refresh_layout()
+
 
 func set_skip_button_visible(visible_state: bool) -> void:
 	_skip_btn.visible = visible_state
@@ -553,7 +565,7 @@ func _refresh_phase_label() -> void:
 		return
 	match _phase:
 		PREP_PHASE:
-			_phase_label.text = "Preparation"
+			_phase_label.text = "Prep"
 		COMBAT_PHASE:
 			_phase_label.text = "Combat"
 		RESULT_PHASE:
@@ -570,7 +582,7 @@ func _refresh_layout() -> void:
 	size = Vector2(width, height)
 	var compact: bool = width < 980.0
 	var very_compact: bool = width < 1260.0
-	var top_h: float = 50.0 if not compact else 58.0
+	var top_h: float = 54.0 if not compact else 62.0
 	var trait_w: float = 132.0 if not compact else 112.0
 	var inventory_x: float = 118.0 if not compact else 90.0
 	var slot_step: float = 28.0 if very_compact else 32.0
@@ -587,26 +599,24 @@ func _refresh_layout() -> void:
 	if _health_label != null:
 		_health_label.position = Vector2(40.0, 16.0 if compact else 12.0)
 	if _round_label != null:
-		var round_left: float = inventory_x + 48.0 + float(_inventory_slot_bgs.size()) * slot_step + 16.0
-		var round_right: float = width - button_w - 224.0
-		var round_w: float = maxf(120.0, round_right - round_left)
-		_round_label.position = Vector2(round_left, 8.0)
-		_round_label.custom_minimum_size = Vector2(round_w, 22.0)
+		var round_width: float = 140.0 if not compact else 120.0
+		_round_label.position = Vector2((width - round_width) * 0.5, 8.0)
+		_round_label.custom_minimum_size = Vector2(round_width, 22.0)
 		_round_label.add_theme_font_size_override("font_size", 16 if very_compact else 18)
 	if _skip_btn != null:
 		_skip_btn.position = Vector2(width - button_w - 16.0, 12.0 if compact else 10.0)
 		_skip_btn.custom_minimum_size = Vector2(button_w, 36.0 if compact else 34.0)
 		_skip_btn.size = _skip_btn.custom_minimum_size
-	var right_info_x: float = width - (button_w + 136.0 if not compact else button_w + 114.0)
+	var right_info_x: float = width - (button_w + 118.0 if not compact else button_w + 106.0)
 	if _team_label != null:
 		_team_label.position = Vector2(right_info_x, 8.0 if compact else 8.0)
-		_team_label.custom_minimum_size = Vector2(110.0, 18.0)
+		_team_label.custom_minimum_size = Vector2(90.0, 18.0)
 	if _bench_label != null:
 		_bench_label.position = Vector2(right_info_x, 24.0 if compact else 24.0)
-		_bench_label.custom_minimum_size = Vector2(110.0, 16.0)
+		_bench_label.custom_minimum_size = Vector2(90.0, 16.0)
 	if _phase_label != null:
-		_phase_label.position = Vector2(right_info_x - (90.0 if compact else 104.0), 8.0)
-		_phase_label.custom_minimum_size = Vector2(84.0 if compact else 96.0, 22.0)
+		_phase_label.position = Vector2(right_info_x - (86.0 if compact else 96.0), 8.0)
+		_phase_label.custom_minimum_size = Vector2(76.0 if compact else 88.0, 22.0)
 		_phase_label.add_theme_font_size_override("font_size", 12 if very_compact else 13)
 	if _result_label != null:
 		_result_label.position = Vector2((width - minf(360.0, width - 180.0)) * 0.5, top_h + 2.0)
@@ -622,11 +632,8 @@ func _refresh_layout() -> void:
 		_inventory_buttons[i].position = Vector2(x, 9.0)
 		_inventory_buttons[i].custom_minimum_size = Vector2(slot_size, slot_size)
 
-	var tracker_width: float = 12.0 * 14.0 + 11.0 * 6.0
-	var tracker_start_x: float = maxf(inventory_x + 44.0, (width - tracker_width) * 0.5 - (80.0 if compact else 60.0))
 	for i in _stage_indicators.size():
-		_stage_indicators[i].position = Vector2(tracker_start_x + i * 20.0, 32.0 if compact else 28.0)
-		_stage_indicators[i].visible = width >= 1360.0
+		_stage_indicators[i].visible = false
 
 	if _trait_panel_bg != null:
 		_trait_panel_bg.position = Vector2.ZERO
@@ -635,9 +642,11 @@ func _refresh_layout() -> void:
 		_trait_title.position = Vector2(4.0, top_h + 6.0)
 		_trait_title.custom_minimum_size = Vector2(trait_w - 8.0, 18.0)
 
-	var row_y: float = top_h + 28.0
+	var row_y: float = top_h + 20.0
 	for trait_id in _trait_entries:
 		var e: Dictionary = _trait_entries[trait_id]
+		if not (e["bg"] as ColorRect).visible:
+			continue
 		(e["bg"] as ColorRect).position = Vector2(6.0, row_y)
 		(e["bg"] as ColorRect).custom_minimum_size = Vector2(trait_w - 12.0, 22.0)
 		(e["icon"] as TextureRect).position = Vector2(8.0, row_y + 2.0)
@@ -654,7 +663,7 @@ func _refresh_layout() -> void:
 
 func _refresh_overview() -> void:
 	if _team_label != null:
-		_team_label.text = "Team %d/%d" % [_get_team_count(), _get_team_capacity()]
+		_team_label.text = "Board %d/%d" % [_get_team_count(), _get_team_capacity()]
 	if _bench_label != null:
 		_bench_label.text = "Bench %d/%d" % [_get_bench_count(), _get_bench_capacity()]
 	if _skip_btn != null:

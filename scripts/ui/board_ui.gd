@@ -24,6 +24,9 @@ var _shop_ui = null
 var _board_offset: Vector2 = BOARD_OFFSET
 var _cell_size: float = CELL_SIZE
 var _label_font_size: int = 13
+var _hovered_unit = null
+var _tooltip_panel: PanelContainer = null
+var _tooltip_label: Label = null
 
 # Grid: [col][row] -> Unit or null
 var grid: Array = []
@@ -39,11 +42,32 @@ signal unit_tapped(unit)
 
 func _ready() -> void:
 	_initialize_grid()
+	_build_tooltip()
 	_bind_scene_peers()
 	if not get_viewport().size_changed.is_connected(_refresh_layout):
 		get_viewport().size_changed.connect(_refresh_layout)
 	_refresh_layout()
 	_draw_board()
+
+
+func _build_tooltip() -> void:
+	_tooltip_panel = PanelContainer.new()
+	_tooltip_panel.visible = false
+	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_tooltip_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	_tooltip_panel.add_child(margin)
+
+	_tooltip_label = Label.new()
+	_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_tooltip_label.custom_minimum_size = Vector2(220, 0)
+	_tooltip_label.add_theme_font_size_override("font_size", 12)
+	margin.add_child(_tooltip_label)
 
 
 func _initialize_grid() -> void:
@@ -61,6 +85,10 @@ func select_unit_from_bench(unit) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_update_hovered_unit(event.position)
+		return
+
 	if not _interaction_enabled:
 		return
 
@@ -185,6 +213,46 @@ func get_all_placed_units() -> Array:
 			if grid[col][row] != null:
 				result.append(grid[col][row])
 	return result
+
+
+func _update_hovered_unit(pointer_pos: Vector2) -> void:
+	_hovered_unit = null
+	var cell: Vector2i = _world_to_cell(pointer_pos)
+	if _is_valid_cell(cell.x, cell.y):
+		_hovered_unit = grid[cell.x][cell.y]
+	_update_tooltip(pointer_pos)
+
+
+func _update_tooltip(pointer_pos: Vector2) -> void:
+	if _tooltip_panel == null or _tooltip_label == null:
+		return
+	if _hovered_unit == null:
+		_tooltip_panel.visible = false
+		return
+	_tooltip_label.text = DataManager.get_unit_tooltip(_hovered_unit.unit_id)
+	_tooltip_panel.visible = true
+	var tooltip_pos: Vector2 = pointer_pos + Vector2(16, 16)
+	var view_size: Vector2 = get_viewport_rect().size
+	_tooltip_panel.position = tooltip_pos
+	var panel_size: Vector2 = _tooltip_panel.get_combined_minimum_size()
+	if tooltip_pos.x + panel_size.x > view_size.x - 8.0:
+		_tooltip_panel.position.x = view_size.x - panel_size.x - 8.0
+	if tooltip_pos.y + panel_size.y > view_size.y - 8.0:
+		_tooltip_panel.position.y = tooltip_pos.y - panel_size.y - 24.0
+
+
+func remove_unit_instance(unit) -> bool:
+	if unit == null:
+		return false
+	for col in COLS:
+		for row in ROWS:
+			if grid[col][row] == unit:
+				grid[col][row] = null
+				unit.board_position = Vector2i(-1, -1)
+				unit.visible = false
+				queue_redraw()
+				return true
+	return false
 
 
 func get_unit_count() -> int:
@@ -333,6 +401,8 @@ func _on_phase_changed(phase: int) -> void:
 	_interaction_enabled = phase == PREP_PHASE
 	if not _interaction_enabled:
 		_clear_selection()
+	_hovered_unit = null
+	_update_tooltip(Vector2.ZERO)
 	queue_redraw()
 
 
