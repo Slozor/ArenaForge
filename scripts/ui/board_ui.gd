@@ -265,8 +265,11 @@ func _tile_tint_for(col: int, row: int) -> Color:
 func _draw_lane_labels() -> void:
 	var backline_pos := BOARD_OFFSET + Vector2(8, 8)
 	var frontline_pos := BOARD_OFFSET + Vector2(8, float((ROWS - 1) * CELL_SIZE) + 8)
-	draw_string(get_theme_default_font(), backline_pos, "Backline", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.72, 0.82, 0.95, 0.78))
-	draw_string(get_theme_default_font(), frontline_pos, "Frontline", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.90, 0.84, 0.66, 0.78))
+	var font: Font = ThemeDB.fallback_font
+	if font == null:
+		return
+	draw_string(font, backline_pos, "Backline", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.72, 0.82, 0.95, 0.78))
+	draw_string(font, frontline_pos, "Frontline", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.90, 0.84, 0.66, 0.78))
 
 
 func _bind_scene_peers() -> void:
