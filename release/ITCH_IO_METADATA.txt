@@ -1,0 +1,17 @@
+Title: ArenaForge
+Release channel: windows
+Price: Free
+Visibility recommendation: Draft first
+Engine: Godot 4
+Primary platform: Windows
+Genre: Strategy / Auto-battler
+Tags: autobattler, strategy, prototype, tactics, godot
+
+Suggested screenshots:
+1. Shop + board preparation screen
+2. Mid-combat screen
+3. Unit merge / upgraded board state
+
+Suggested cover text:
+ArenaForge
+Auto-battler Prototype

@@ -258,6 +258,10 @@ func _on_level_changed(new_level: int) -> void:
 func _spawn_enemy_team() -> void:
 	_clear_enemy_units()
 	enemy_units = enemy_spawner.spawn_enemy_team(GameManager.current_round, current_opponent_index)
+	if board_ui != null:
+		for unit in enemy_units:
+			if unit != null and is_instance_valid(unit) and unit.get_parent() != board_ui:
+				unit.reparent(board_ui)
 
 
 func _clear_enemy_units() -> void:
@@ -339,6 +343,7 @@ func _restore_player_prep_positions() -> void:
 
 func _prepare_player_units_for_combat() -> void:
 	for unit in _get_player_units():
+		unit.is_enemy_unit = false
 		unit.board_position = Vector2i(unit.board_position.x, unit.board_position.y + 4)
 		unit.visible = true
 

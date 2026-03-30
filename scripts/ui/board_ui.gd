@@ -89,9 +89,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_update_hovered_unit(event.position)
 		return
 
-	if not _interaction_enabled:
-		return
-
 	var tap_pos: Vector2 = Vector2.ZERO
 	var is_tap: bool = false
 
@@ -105,17 +102,26 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not is_tap:
 		return
 
+	var tapped_unit = _find_unit_at_position(tap_pos)
+
+	if not _interaction_enabled:
+		if tapped_unit != null:
+			unit_tapped.emit(tapped_unit)
+		return
+
 	var cell: Vector2i = _world_to_cell(tap_pos)
 	var on_board: bool = _is_valid_cell(cell.x, cell.y)
 
 	match input_state:
 		InputState.IDLE:
-			if on_board and grid[cell.x][cell.y] != null:
-				if _hud_ui != null and _hud_ui.is_item_targeting_active():
-					unit_tapped.emit(grid[cell.x][cell.y])
+			if tapped_unit != null:
+				unit_tapped.emit(tapped_unit)
+				if tapped_unit.is_enemy_unit:
 					return
-				unit_tapped.emit(grid[cell.x][cell.y])
-				_set_selected(grid[cell.x][cell.y], cell, false)
+				if _hud_ui != null and _hud_ui.is_item_targeting_active():
+					return
+				if on_board and grid[cell.x][cell.y] == tapped_unit:
+					_set_selected(tapped_unit, cell, false)
 
 		InputState.UNIT_SELECTED:
 			if on_board:
@@ -216,10 +222,7 @@ func get_all_placed_units() -> Array:
 
 
 func _update_hovered_unit(pointer_pos: Vector2) -> void:
-	_hovered_unit = null
-	var cell: Vector2i = _world_to_cell(pointer_pos)
-	if _is_valid_cell(cell.x, cell.y):
-		_hovered_unit = grid[cell.x][cell.y]
+	_hovered_unit = _find_unit_at_position(pointer_pos)
 	_update_tooltip(pointer_pos)
 
 
@@ -253,6 +256,25 @@ func remove_unit_instance(unit) -> bool:
 				queue_redraw()
 				return true
 	return false
+
+
+func _find_unit_at_position(pointer_pos: Vector2):
+	var closest_unit = null
+	var closest_dist_sq: float = 1600.0
+	for child in get_children():
+		if child == null or not is_instance_valid(child):
+			continue
+		if not (child is Node2D):
+			continue
+		if not child.has_method("get_attack_damage"):
+			continue
+		if not child.visible:
+			continue
+		var dist_sq: float = child.position.distance_squared_to(pointer_pos)
+		if dist_sq <= closest_dist_sq:
+			closest_dist_sq = dist_sq
+			closest_unit = child
+	return closest_unit
 
 
 func get_unit_count() -> int:

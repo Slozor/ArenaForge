@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 GameManager="*res://scripts/autoload/game_manager.gd"
 ShopManager="*res://scripts/autoload/shop_manager.gd"
 DataManager="*res://scripts/autoload/data_manager.gd"
+UISettings="*res://scripts/autoload/ui_settings.gd"
 
 [display]
 

@@ -42,6 +42,8 @@ var _heart_label: Label = null
 var _trait_panel_bg: ColorRect = null
 var _trait_title: Label = null
 var _overlay_panel: PanelContainer = null
+var _inspect_panel: PanelContainer = null
+var _inspect_label: Label = null
 
 signal skip_prep_pressed()
 signal restart_requested()
@@ -66,6 +68,7 @@ func _ready() -> void:
 	_build_trait_panel()
 	_build_stage_tracker()
 	_build_overlay()
+	_build_inspect_panel()
 	_bind_scene_peers()
 	_refresh_phase_label()
 
@@ -358,6 +361,26 @@ func _build_overlay() -> void:
 	box.add_child(_menu_btn)
 
 
+func _build_inspect_panel() -> void:
+	_inspect_panel = PanelContainer.new()
+	_inspect_panel.visible = false
+	_inspect_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_inspect_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_inspect_panel.add_child(margin)
+
+	_inspect_label = Label.new()
+	_inspect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspect_label.custom_minimum_size = Vector2(240, 0)
+	_inspect_label.add_theme_font_size_override("font_size", 12)
+	margin.add_child(_inspect_label)
+
+
 # ── Public: update traits display ──────────────────────────────────────────
 
 func update_synergies(board_units: Array) -> void:
@@ -556,6 +579,8 @@ func _on_phase_changed(phase: int) -> void:
 	if phase != PREP_PHASE and _selected_item_index != -1:
 		_selected_item_index = -1
 		_refresh_inventory_selection()
+	if _inspect_panel != null and phase != COMBAT_PHASE:
+		_inspect_panel.visible = false
 	_refresh_phase_label()
 	_refresh_overview()
 
@@ -659,6 +684,9 @@ func _refresh_layout() -> void:
 		row_y += 24.0
 	if _overlay_panel != null:
 		_overlay_panel.custom_minimum_size = Vector2(clampf(width * 0.38, 320.0, 520.0), clampf(height * 0.34, 220.0, 340.0))
+	if _inspect_panel != null:
+		_inspect_panel.position = Vector2(width - clampf(width * 0.28, 250.0, 340.0) - 18.0, top_h + 10.0)
+		_inspect_panel.custom_minimum_size = Vector2(clampf(width * 0.28, 250.0, 340.0), 0.0)
 
 
 func _refresh_overview() -> void:
@@ -792,7 +820,10 @@ func _on_inventory_slot_pressed(index: int) -> void:
 
 
 func _on_unit_targeted_for_item(unit) -> void:
-	if _selected_item_index < 0 or unit == null:
+	if unit == null:
+		return
+	if _selected_item_index < 0:
+		_show_unit_inspect(unit)
 		return
 	if GameManager.equip_inventory_item_to_unit(_selected_item_index, unit):
 		_selected_item_index = -1
@@ -805,6 +836,13 @@ func _on_unit_targeted_for_item(unit) -> void:
 		_result_label.text = "Unit already has an item"
 		_result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
 		_result_label.visible = true
+
+
+func _show_unit_inspect(unit) -> void:
+	if _inspect_panel == null or _inspect_label == null:
+		return
+	_inspect_label.text = DataManager.get_unit_tooltip(unit.unit_id)
+	_inspect_panel.visible = true
 
 
 func is_item_targeting_active() -> bool:

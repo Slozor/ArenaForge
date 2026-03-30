@@ -45,6 +45,7 @@ func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array:
 
 		unit.board_position = positions[i]
 		unit.is_on_bench = false
+		unit.is_enemy_unit = true
 		spawned.append(unit)
 
 	return spawned

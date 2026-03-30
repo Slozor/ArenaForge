@@ -224,6 +224,7 @@ func add_unit(unit) -> bool:
 			_board_ui.add_child(unit)
 		_units[slot] = unit
 		unit.is_on_bench = true
+		unit.is_enemy_unit = false
 		unit.board_position = Vector2i(-1, -1)
 		unit.visible = false
 		_refresh_slot(slot)

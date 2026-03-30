@@ -42,6 +42,7 @@ var current_health: int = 0
 var state: int = STATE_IDLE
 var board_position: Vector2i = Vector2i(-1, -1)
 var is_on_bench: bool = true
+var is_enemy_unit: bool = false
 var has_revived: bool = false
 var target = null
 var _flash_color: Color = Color.TRANSPARENT
@@ -205,6 +206,7 @@ func _draw() -> void:
 	var body_color: Color = _race_color()
 	var accent_color: Color = _trait_color()
 	var cost_color: Color = _cost_color()
+	var team_ring: Color = Color(0.34, 0.72, 1.0, 0.72) if not is_enemy_unit else Color(1.0, 0.42, 0.42, 0.72)
 	var shadow_rect: Rect2 = Rect2(Vector2(-BODY_RADIUS, BODY_RADIUS * 0.65), Vector2(BODY_RADIUS * 2.0, 10))
 	draw_ellipse(
 		shadow_rect.position + shadow_rect.size * 0.5,
@@ -213,6 +215,7 @@ func _draw() -> void:
 		Color(0, 0, 0, 0.28),
 		true
 	)
+	draw_circle(Vector2.ZERO, BODY_RADIUS + 7.0, team_ring)
 	draw_circle(Vector2.ZERO, BODY_RADIUS + 5.0, cost_color.darkened(0.35))
 	draw_circle(Vector2.ZERO, BODY_RADIUS + 2.0, body_color.darkened(0.55))
 	draw_circle(Vector2.ZERO, BODY_RADIUS, body_color)
