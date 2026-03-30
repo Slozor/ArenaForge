@@ -202,7 +202,7 @@ func _build_trait_panel() -> void:
 	# Left side panel: shows active traits
 	var panel_bg := ColorRect.new()
 	panel_bg.color = Color(0.07, 0.08, 0.11, 0.88)
-	panel_bg.custom_minimum_size = Vector2(140, 380)
+	panel_bg.custom_minimum_size = Vector2(140, 540)
 	panel_bg.position = Vector2(0, 50)
 	add_child(panel_bg)
 
@@ -576,16 +576,28 @@ func _trait_icon_tint(trait_id: String) -> Color:
 			return Color(0.80, 0.82, 0.92)
 		"dragon":
 			return Color(1.00, 0.55, 0.35)
+		"orc":
+			return Color(0.60, 0.82, 0.38)
+		"fae":
+			return Color(0.88, 0.68, 0.98)
 		"warrior":
 			return Color(0.85, 0.55, 0.35)
+		"knight":
+			return Color(0.98, 0.84, 0.48)
 		"mage":
 			return Color(0.55, 0.70, 1.00)
+		"sorcerer":
+			return Color(0.58, 0.76, 1.00)
 		"ranger":
 			return Color(0.75, 0.95, 0.55)
 		"guardian":
 			return Color(0.95, 0.80, 0.45)
 		"assassin":
 			return Color(0.95, 0.45, 0.65)
+		"vanguard":
+			return Color(0.94, 0.76, 0.40)
+		"duelist":
+			return Color(1.00, 0.52, 0.58)
 		_:
 			return Color(0.8, 0.8, 0.8)
 

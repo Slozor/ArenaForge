@@ -11,7 +11,7 @@ const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
 const SLOT_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
 const PORTRAIT_TEXTURE: Texture2D = preload("res://assets/portraits/placeholder_unit.svg")
-const UNIT_SCRIPT: Script = preload("res://scripts/units/unit.gd")
+const UNIT_SCRIPT_PATH: String = "res://scripts/units/unit.gd"
 const COST_COLORS: Dictionary = {
 	1: Color(0.65, 0.65, 0.65),
 	2: Color(0.15, 0.70, 0.30),
@@ -184,7 +184,10 @@ func add_unit_from_shop(unit_id: String) -> bool:
 	var data: Dictionary = DataManager.get_unit(unit_id)
 	if data.is_empty():
 		return false
-	var unit = UNIT_SCRIPT.new()
+	var unit_script: Script = load(UNIT_SCRIPT_PATH)
+	if unit_script == null:
+		return false
+	var unit = unit_script.new()
 	unit.init(data)
 	return add_unit(unit)
 

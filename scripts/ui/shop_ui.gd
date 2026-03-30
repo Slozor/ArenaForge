@@ -129,7 +129,7 @@ func _build_cards() -> void:
 	var start_x: float = (1280.0 - total_w) / 2.0
 
 	for i in 5:
-		var card := _make_unit_card()
+		var card = _make_unit_card()
 		card.position = Vector2(start_x + i * (CARD_W + CARD_GAP), 30)
 		add_child(card)
 		_cards.append(card)
@@ -292,6 +292,7 @@ func _on_card_tapped(unit_id: String) -> void:
 	if not _bench_ui.add_unit_from_shop(unit_id):
 		var cost: int = DataManager.get_unit(unit_id).get("cost", 1)
 		GameManager.add_gold(cost)
+		ShopManager.return_unit_to_pool(unit_id)
 		ShopManager.shop_units.append(unit_id)
 		ShopManager.shop_refreshed.emit(ShopManager.shop_units)
 		_set_status("Bench full")

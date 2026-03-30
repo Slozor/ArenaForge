@@ -1,8 +1,8 @@
 extends Node2D
-
-class_name Unit
-
-enum State { IDLE, MOVING, ATTACKING, DEAD }
+const STATE_IDLE: int = 0
+const STATE_MOVING: int = 1
+const STATE_ATTACKING: int = 2
+const STATE_DEAD: int = 3
 
 const BODY_RADIUS: float = 20.0
 
@@ -39,7 +39,7 @@ var equipped_item: String = ""
 
 # Runtime
 var current_health: int = 0
-var state: State = State.IDLE
+var state: int = STATE_IDLE
 var board_position: Vector2i = Vector2i(-1, -1)
 var is_on_bench: bool = true
 var has_revived: bool = false
@@ -79,7 +79,7 @@ func init(data: Dictionary) -> void:
 func reset_combat_state() -> void:
 	_recalculate_stats()
 	current_health = get_max_health()
-	state = State.IDLE
+	state = STATE_IDLE
 	has_revived = false
 	target = null
 	temp_attack_speed_mod = 0.0
@@ -125,7 +125,7 @@ func get_armor() -> int:
 
 
 func take_damage(raw_amount: int, ignore_armor: bool = false) -> bool:
-	if state == State.DEAD:
+	if state == STATE_DEAD:
 		return false
 
 	var reduced: int = raw_amount
@@ -175,9 +175,9 @@ func _apply_armor_reduction(raw: int) -> int:
 
 
 func _on_death() -> void:
-	if state == State.DEAD:
+	if state == STATE_DEAD:
 		return
-	state = State.DEAD
+	state = STATE_DEAD
 	play_death_pop()
 	died.emit(self)
 
