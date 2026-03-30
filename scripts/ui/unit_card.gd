@@ -70,7 +70,7 @@ func _refresh_display() -> void:
 	var border: Color = COST_COLORS.get(cost, UITheme.BORDER_MID)
 	var label_col: Color = COST_LABEL_COLORS.get(cost, UITheme.TEXT_PRIMARY)
 
-	_portrait.color = border.darkened(0.55)
+	_portrait.modulate = border.darkened(0.55)
 	_name_label.text = unit_data.get("name", "?")
 
 	_cost_badge.color = border.darkened(0.2)
@@ -87,7 +87,7 @@ func _refresh_display() -> void:
 
 
 func _show_empty() -> void:
-	_portrait.color    = UITheme.BG_CARD
+	_portrait.modulate = UITheme.BG_CARD
 	_name_label.text   = ""
 	_cost_label.text   = ""
 	_cost_badge.color  = UITheme.BG_PANEL
