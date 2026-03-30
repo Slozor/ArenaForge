@@ -1,0 +1,52 @@
+{
+  "rounds": [
+    {
+      "round": 1,
+      "units": ["iron_guard", "bone_walker"]
+    },
+    {
+      "round": 2,
+      "units": ["iron_guard", "bone_walker", "elven_archer"]
+    },
+    {
+      "round": 3,
+      "units": ["bone_walker", "elven_archer", "iron_guard"]
+    },
+    {
+      "round": 4,
+      "units": ["iron_guard", "elven_archer", "bone_walker", "iron_guard"]
+    },
+    {
+      "round": 5,
+      "units": ["bone_walker", "bone_walker", "iron_guard", "stone_breaker"]
+    },
+    {
+      "round": 6,
+      "units": ["elven_archer", "elven_mage", "iron_guard", "scout"]
+    },
+    {
+      "round": 7,
+      "units": ["bone_walker", "bone_walker", "soul_reaper", "iron_guard", "stone_breaker"]
+    },
+    {
+      "round": 8,
+      "units": ["elven_archer", "elven_mage", "scout", "shadowblade", "iron_guard"]
+    },
+    {
+      "round": 9,
+      "units": ["bone_walker", "bone_walker", "soul_reaper", "stone_breaker", "runesmith", "flameling"]
+    },
+    {
+      "round": 10,
+      "units": ["elven_archer", "elven_mage", "shadowblade", "scout", "paladin", "stone_breaker"]
+    },
+    {
+      "round": 11,
+      "units": ["bone_walker", "bone_walker", "soul_reaper", "flameling", "flameling", "dragon_knight"]
+    },
+    {
+      "round": 12,
+      "units": ["stone_breaker", "runesmith", "bone_walker", "soul_reaper", "flameling", "dragon_knight", "shadowblade"]
+    }
+  ]
+}
