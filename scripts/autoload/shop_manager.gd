@@ -43,14 +43,19 @@ func _ready() -> void:
 
 
 func _initialize_pool() -> void:
-	if _pool_initialized:
-		return
 	unit_pool.clear()
 	for unit_id in DataManager.get_all_unit_ids():
 		var unit_data: Dictionary = DataManager.get_unit(unit_id)
 		var cost: int = unit_data.get("cost", 1)
 		unit_pool[unit_id] = TIER_POOL_SIZES.get(cost, 20)
 	_pool_initialized = true
+
+
+func reset_for_new_game() -> void:
+	_shop_locked = false
+	shop_units.clear()
+	_initialize_pool()
+	shop_lock_changed.emit(_shop_locked)
 
 
 func is_shop_locked() -> bool:

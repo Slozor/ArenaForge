@@ -49,7 +49,9 @@ func _ready() -> void:
 
 	ShopManager.shop_refreshed.connect(_on_shop_refreshed)
 	ShopManager.unit_purchased.connect(_on_unit_purchased)
+	ShopManager.shop_lock_changed.connect(_on_shop_lock_changed)
 	GameManager.gold_changed.connect(_on_gold_changed)
+	_on_shop_lock_changed(ShopManager.is_shop_locked())
 
 
 func _build_background() -> void:
@@ -328,11 +330,6 @@ func _on_toggle_lock() -> void:
 	if _phase != PREP_PHASE:
 		return
 	_locked = ShopManager.toggle_shop_lock()
-	_lock_btn.text = ("🔒 Locked" if _locked else "🔓 Lock")
-	_lock_btn.add_theme_color_override(
-		"font_color",
-		Color(1.0, 0.9, 0.6) if _locked else Color.WHITE
-	)
 	_locked_snapshot = ShopManager.shop_units.duplicate()
 	_set_status("Shop locked" if _locked else "Shop unlocked")
 	_update_affordability()
@@ -353,9 +350,9 @@ func _update_affordability() -> void:
 			card.set_affordable(can_buy)
 
 	if _reroll_btn != null:
-		_reroll_btn.disabled = _phase != PREP_PHASE or _locked
+		_reroll_btn.disabled = _phase != PREP_PHASE
 	if _xp_btn != null:
-		_xp_btn.disabled = _phase != PREP_PHASE
+		_xp_btn.disabled = _phase != PREP_PHASE or not GameManager.can_buy_xp()
 	if _lock_btn != null:
 		_lock_btn.disabled = _phase != PREP_PHASE
 
@@ -401,6 +398,17 @@ func _on_board_changed() -> void:
 
 func _on_bench_changed(_unit: Unit) -> void:
 	_refresh_overview()
+
+
+func _on_shop_lock_changed(locked: bool) -> void:
+	_locked = locked
+	if _lock_btn != null:
+		_lock_btn.text = ("🔒 Locked" if _locked else "🔓 Lock")
+		_lock_btn.add_theme_color_override(
+			"font_color",
+			Color(1.0, 0.9, 0.6) if _locked else Color.WHITE
+		)
+	_update_affordability()
 
 
 func _refresh_overview() -> void:

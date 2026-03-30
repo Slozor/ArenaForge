@@ -61,6 +61,7 @@ func _ready() -> void:
 	combat_finished.connect(_on_combat_finished)
 	game_over.connect(_on_game_over)
 
+	ShopManager.reset_for_new_game()
 	GameManager.start_new_game()
 	_refresh_board_state()
 	start_round(false)
