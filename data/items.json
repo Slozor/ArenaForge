@@ -1,0 +1,68 @@
+{
+  "items": [
+    {
+      "id": "iron_sword",
+      "name": "Iron Sword",
+      "icon": "iron_sword",
+      "description": "+20 Attack Damage",
+      "effect": "attack_damage_flat",
+      "value": 20
+    },
+    {
+      "id": "chainmail",
+      "name": "Chainmail",
+      "icon": "chainmail",
+      "description": "+20 Armor",
+      "effect": "armor_flat",
+      "value": 20
+    },
+    {
+      "id": "giants_belt",
+      "name": "Giant's Belt",
+      "icon": "giants_belt",
+      "description": "+200 Max HP",
+      "effect": "max_hp_flat",
+      "value": 200
+    },
+    {
+      "id": "recurve_bow",
+      "name": "Recurve Bow",
+      "icon": "recurve_bow",
+      "description": "+0.2 Attack Speed",
+      "effect": "attack_speed_flat",
+      "value": 0.2
+    },
+    {
+      "id": "vampiric_blade",
+      "name": "Vampiric Blade",
+      "icon": "vampiric_blade",
+      "description": "Heal 15% of damage dealt",
+      "effect": "lifesteal_percent",
+      "value": 0.15
+    },
+    {
+      "id": "thornmail",
+      "name": "Thornmail",
+      "icon": "thornmail",
+      "description": "Reflect 20% of damage taken back to attacker",
+      "effect": "damage_reflect_percent",
+      "value": 0.20
+    },
+    {
+      "id": "rage_crown",
+      "name": "Rage Crown",
+      "icon": "rage_crown",
+      "description": "+15% damage for each alive ally",
+      "effect": "damage_per_ally_percent",
+      "value": 0.15
+    },
+    {
+      "id": "frozen_heart",
+      "name": "Frozen Heart",
+      "icon": "frozen_heart",
+      "description": "Attacks slow enemy attack speed by 25% for 2s",
+      "effect": "attack_slow_on_hit",
+      "value": 0.25
+    }
+  ]
+}

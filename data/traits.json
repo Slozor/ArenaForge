@@ -1,0 +1,101 @@
+{
+  "races": [
+    {
+      "id": "human",
+      "name": "Human",
+      "icon": "human",
+      "description": "Humans earn bonus gold each round.",
+      "thresholds": [
+        { "count": 2, "label": "2 Human", "effect": "gold_per_round", "value": 1 },
+        { "count": 3, "label": "3 Human", "effect": "gold_per_round", "value": 2 }
+      ]
+    },
+    {
+      "id": "elf",
+      "name": "Elf",
+      "icon": "elf",
+      "description": "Elves gain increased attack speed.",
+      "thresholds": [
+        { "count": 2, "label": "2 Elf", "effect": "attack_speed_bonus", "value": 0.15 },
+        { "count": 3, "label": "3 Elf", "effect": "attack_speed_bonus", "value": 0.35 }
+      ]
+    },
+    {
+      "id": "dwarf",
+      "name": "Dwarf",
+      "icon": "dwarf",
+      "description": "Dwarves gain bonus armor.",
+      "thresholds": [
+        { "count": 2, "label": "2 Dwarf", "effect": "armor_bonus_percent", "value": 0.30 },
+        { "count": 3, "label": "3 Dwarf", "effect": "armor_bonus_percent", "value": 0.60 }
+      ]
+    },
+    {
+      "id": "undead",
+      "name": "Undead",
+      "icon": "undead",
+      "description": "Undead revive once at 50% HP when killed.",
+      "thresholds": [
+        { "count": 2, "label": "2 Undead", "effect": "revive_once", "value": 0.50 }
+      ]
+    },
+    {
+      "id": "dragon",
+      "name": "Dragon",
+      "icon": "dragon",
+      "description": "Dragon attacks apply a burn.",
+      "thresholds": [
+        { "count": 2, "label": "2 Dragon", "effect": "burn_on_hit", "value": 10 }
+      ]
+    }
+  ],
+  "classes": [
+    {
+      "id": "warrior",
+      "name": "Warrior",
+      "icon": "warrior",
+      "description": "Warriors gain bonus max HP.",
+      "thresholds": [
+        { "count": 2, "label": "2 Warrior", "effect": "max_hp_bonus_percent", "value": 0.25 },
+        { "count": 3, "label": "3 Warrior", "effect": "max_hp_bonus_percent", "value": 0.50 }
+      ]
+    },
+    {
+      "id": "mage",
+      "name": "Mage",
+      "icon": "mage",
+      "description": "Mages deal bonus damage.",
+      "thresholds": [
+        { "count": 2, "label": "2 Mage", "effect": "damage_bonus_percent", "value": 0.20 },
+        { "count": 3, "label": "3 Mage", "effect": "damage_bonus_percent", "value": 0.45 }
+      ]
+    },
+    {
+      "id": "ranger",
+      "name": "Ranger",
+      "icon": "ranger",
+      "description": "Rangers gain +1 attack range.",
+      "thresholds": [
+        { "count": 2, "label": "2 Ranger", "effect": "attack_range_bonus", "value": 1 }
+      ]
+    },
+    {
+      "id": "guardian",
+      "name": "Guardian",
+      "icon": "guardian",
+      "description": "Guardians shield all allies at battle start.",
+      "thresholds": [
+        { "count": 2, "label": "2 Guardian", "effect": "team_shield_percent", "value": 0.15 }
+      ]
+    },
+    {
+      "id": "assassin",
+      "name": "Assassin",
+      "icon": "assassin",
+      "description": "Assassins leap to the weakest enemy at battle start.",
+      "thresholds": [
+        { "count": 2, "label": "2 Assassin", "effect": "leap_to_weakest", "value": 1 }
+      ]
+    }
+  ]
+}

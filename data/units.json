@@ -1,0 +1,196 @@
+{
+  "units": [
+    {
+      "id": "iron_guard",
+      "name": "Iron Guard",
+      "race": "human",
+      "trait": "warrior",
+      "cost": 1,
+      "stats": {
+        "health": 500,
+        "attack_damage": 55,
+        "attack_speed": 0.75,
+        "attack_range": 1,
+        "armor": 25,
+        "move_speed": 2.0
+      },
+      "passive": "last_stand"
+    },
+    {
+      "id": "scout",
+      "name": "Scout",
+      "race": "human",
+      "trait": "ranger",
+      "cost": 2,
+      "stats": {
+        "health": 650,
+        "attack_damage": 80,
+        "attack_speed": 1.0,
+        "attack_range": 3,
+        "armor": 15,
+        "move_speed": 2.5
+      },
+      "passive": "first_strike"
+    },
+    {
+      "id": "paladin",
+      "name": "Paladin",
+      "race": "human",
+      "trait": "guardian",
+      "cost": 3,
+      "stats": {
+        "health": 950,
+        "attack_damage": 75,
+        "attack_speed": 0.7,
+        "attack_range": 1,
+        "armor": 45,
+        "move_speed": 1.8
+      },
+      "passive": "healing_aura"
+    },
+    {
+      "id": "elven_archer",
+      "name": "Elven Archer",
+      "race": "elf",
+      "trait": "ranger",
+      "cost": 1,
+      "stats": {
+        "health": 400,
+        "attack_damage": 65,
+        "attack_speed": 1.2,
+        "attack_range": 4,
+        "armor": 10,
+        "move_speed": 2.5
+      },
+      "passive": "pierce_shot"
+    },
+    {
+      "id": "elven_mage",
+      "name": "Elven Mage",
+      "race": "elf",
+      "trait": "mage",
+      "cost": 2,
+      "stats": {
+        "health": 550,
+        "attack_damage": 90,
+        "attack_speed": 0.8,
+        "attack_range": 3,
+        "armor": 10,
+        "move_speed": 2.0
+      },
+      "passive": "armor_shred"
+    },
+    {
+      "id": "shadowblade",
+      "name": "Shadowblade",
+      "race": "elf",
+      "trait": "assassin",
+      "cost": 3,
+      "stats": {
+        "health": 750,
+        "attack_damage": 120,
+        "attack_speed": 1.1,
+        "attack_range": 1,
+        "armor": 20,
+        "move_speed": 3.0
+      },
+      "passive": "stealth_opener"
+    },
+    {
+      "id": "stone_breaker",
+      "name": "Stone Breaker",
+      "race": "dwarf",
+      "trait": "warrior",
+      "cost": 2,
+      "stats": {
+        "health": 750,
+        "attack_damage": 70,
+        "attack_speed": 0.65,
+        "attack_range": 1,
+        "armor": 50,
+        "move_speed": 1.6
+      },
+      "passive": "shield_wall"
+    },
+    {
+      "id": "runesmith",
+      "name": "Runesmith",
+      "race": "dwarf",
+      "trait": "mage",
+      "cost": 3,
+      "stats": {
+        "health": 850,
+        "attack_damage": 95,
+        "attack_speed": 0.7,
+        "attack_range": 2,
+        "armor": 40,
+        "move_speed": 1.8
+      },
+      "passive": "armor_to_power"
+    },
+    {
+      "id": "bone_walker",
+      "name": "Bone Walker",
+      "race": "undead",
+      "trait": "warrior",
+      "cost": 1,
+      "stats": {
+        "health": 480,
+        "attack_damage": 60,
+        "attack_speed": 0.8,
+        "attack_range": 1,
+        "armor": 20,
+        "move_speed": 2.0
+      },
+      "passive": "death_curse"
+    },
+    {
+      "id": "soul_reaper",
+      "name": "Soul Reaper",
+      "race": "undead",
+      "trait": "assassin",
+      "cost": 3,
+      "stats": {
+        "health": 800,
+        "attack_damage": 115,
+        "attack_speed": 1.0,
+        "attack_range": 1,
+        "armor": 15,
+        "move_speed": 3.0
+      },
+      "passive": "soul_harvest"
+    },
+    {
+      "id": "flameling",
+      "name": "Flameling",
+      "race": "dragon",
+      "trait": "mage",
+      "cost": 2,
+      "stats": {
+        "health": 600,
+        "attack_damage": 100,
+        "attack_speed": 0.85,
+        "attack_range": 2,
+        "armor": 15,
+        "move_speed": 2.0
+      },
+      "passive": "death_explosion"
+    },
+    {
+      "id": "dragon_knight",
+      "name": "Dragon Knight",
+      "race": "dragon",
+      "trait": "guardian",
+      "cost": 4,
+      "stats": {
+        "health": 1300,
+        "attack_damage": 130,
+        "attack_speed": 0.7,
+        "attack_range": 1,
+        "armor": 60,
+        "move_speed": 1.8
+      },
+      "passive": "dragon_aura"
+    }
+  ]
+}
