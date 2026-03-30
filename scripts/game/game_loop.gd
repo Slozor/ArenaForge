@@ -2,6 +2,8 @@ extends Node
 
 class_name GameLoop
 
+const MAIN_MENU_SCENE: String = "res://scenes/main_menu.tscn"
+
 enum Phase { PREPARATION, COMBAT, RESULT }
 
 const TOTAL_ROUNDS: int = 12
@@ -54,10 +56,16 @@ func _ready() -> void:
 		board_ui.set_team_capacity(GameManager.get_team_size_cap())
 
 	GameManager.level_changed.connect(_on_level_changed)
+	combat_finished.connect(_on_combat_finished)
+	game_over.connect(_on_game_over)
 
 	GameManager.start_new_game()
 	_refresh_board_state()
 	start_round(false)
+
+	if hud_ui != null:
+		hud_ui.restart_requested.connect(_restart_run)
+		hud_ui.menu_requested.connect(_return_to_menu)
 
 
 func start_round(grant_income: bool = true) -> void:
@@ -72,6 +80,8 @@ func _enter_preparation() -> void:
 	current_phase = Phase.PREPARATION
 	prep_timer = PREP_TIME
 	phase_changed.emit(Phase.PREPARATION)
+	if hud_ui != null:
+		hud_ui.set_skip_button_visible(true)
 
 
 func _enter_combat() -> void:
@@ -81,6 +91,8 @@ func _enter_combat() -> void:
 	current_phase = Phase.COMBAT
 	combat_timer = COMBAT_TIMEOUT
 	phase_changed.emit(Phase.COMBAT)
+	if hud_ui != null:
+		hud_ui.set_skip_button_visible(false)
 	_apply_synergies_to_board()
 	_spawn_enemy_team()
 	combat_controller.start(_get_player_units(), enemy_units)
@@ -276,3 +288,21 @@ func _finish_run(reason: String) -> void:
 	GameManager.register_run_result(placement, reason)
 	GameManager.change_state(GameManager.GameState.GAME_OVER)
 	game_over.emit()
+
+
+func _on_combat_finished(player_won: bool) -> void:
+	if hud_ui != null:
+		hud_ui.show_round_result(player_won, current_round_kind)
+
+
+func _on_game_over() -> void:
+	if hud_ui != null:
+		hud_ui.set_skip_button_visible(false)
+
+
+func _restart_run() -> void:
+	get_tree().reload_current_scene()
+
+
+func _return_to_menu() -> void:
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE)

@@ -26,6 +26,7 @@ var grid: Array = []
 signal unit_placed(unit: Unit, col: int, row: int)
 signal unit_moved(unit: Unit, from: Vector2i, to: Vector2i)
 signal unit_sent_to_bench(unit: Unit)
+signal unit_tapped(unit: Unit)
 
 @onready var highlight_layer: Node2D = $HighlightLayer
 @onready var cell_highlights: Array = []
@@ -74,6 +75,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	match input_state:
 		InputState.IDLE:
 			if on_board and grid[cell.x][cell.y] != null:
+				unit_tapped.emit(grid[cell.x][cell.y])
 				_set_selected(grid[cell.x][cell.y], cell, false)
 
 		InputState.UNIT_SELECTED:

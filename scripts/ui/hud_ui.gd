@@ -17,18 +17,29 @@ var _round_label: Label = null
 var _team_label: Label = null
 var _bench_label: Label = null
 var _phase_label: Label = null
+var _result_label: Label = null
 var _inventory_label: Label = null
 var _inventory_slots: Array[TextureRect] = []
+var _inventory_slot_bgs: Array[ColorRect] = []
+var _inventory_buttons: Array[Button] = []
 var _stage_indicators: Array[ColorRect] = []
 var _trait_entries: Dictionary = {}   # trait_id -> { "bg", "label", "count_label" }
 var _skip_btn: Button = null
+var _overlay: Control = null
+var _overlay_title: Label = null
+var _overlay_body: Label = null
+var _restart_btn: Button = null
+var _menu_btn: Button = null
 var _board_ui: BoardUI = null
 var _bench_ui: BenchUI = null
 var _shop_ui: ShopUI = null
 var _phase: int = PREP_PHASE
 var _touch_hints_enabled: bool = true
+var _selected_item_index: int = -1
 
 signal skip_prep_pressed()
+signal restart_requested()
+signal menu_requested()
 
 
 func _ready() -> void:
@@ -40,6 +51,7 @@ func _ready() -> void:
 	_build_inventory_row()
 	_build_trait_panel()
 	_build_stage_tracker()
+	_build_overlay()
 	_bind_scene_peers()
 	_refresh_phase_label()
 
@@ -47,6 +59,7 @@ func _ready() -> void:
 	GameManager.round_changed.connect(_on_round_changed)
 	GameManager.gold_changed.connect(_on_gold_changed)
 	GameManager.inventory_changed.connect(_on_inventory_changed)
+	GameManager.run_finished.connect(_on_run_finished)
 
 
 func _build_top_bar() -> void:
@@ -124,6 +137,15 @@ func _build_overview() -> void:
 	_phase_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.55))
 	add_child(_phase_label)
 
+	_result_label = Label.new()
+	_result_label.position = Vector2(460, 52)
+	_result_label.custom_minimum_size = Vector2(360, 24)
+	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_result_label.visible = false
+	_result_label.add_theme_font_size_override("font_size", 18)
+	_result_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.7))
+	add_child(_result_label)
+
 
 func _build_inventory_row() -> void:
 	_inventory_label = Label.new()
@@ -139,6 +161,7 @@ func _build_inventory_row() -> void:
 		slot_bg.position = Vector2(198 + i * 32, 9)
 		slot_bg.custom_minimum_size = Vector2(26, 26)
 		add_child(slot_bg)
+		_inventory_slot_bgs.append(slot_bg)
 
 		var slot_icon := TextureRect.new()
 		slot_icon.texture = ITEM_TEXTURE
@@ -149,6 +172,14 @@ func _build_inventory_row() -> void:
 		slot_icon.modulate = Color(1, 1, 1, 0.0)
 		add_child(slot_icon)
 		_inventory_slots.append(slot_icon)
+
+		var slot_btn := Button.new()
+		slot_btn.flat = true
+		slot_btn.position = Vector2(198 + i * 32, 9)
+		slot_btn.custom_minimum_size = Vector2(26, 26)
+		slot_btn.pressed.connect(_on_inventory_slot_pressed.bind(i))
+		add_child(slot_btn)
+		_inventory_buttons.append(slot_btn)
 
 
 func _build_stage_tracker() -> void:
@@ -234,6 +265,63 @@ func _build_trait_panel() -> void:
 		row_y += 28.0
 
 
+func _build_overlay() -> void:
+	_overlay = Control.new()
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.visible = false
+	add_child(_overlay)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.02, 0.03, 0.05, 0.72)
+	_overlay.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(420, 260)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	margin.add_child(box)
+
+	_overlay_title = Label.new()
+	_overlay_title.text = "Run Complete"
+	_overlay_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_overlay_title.add_theme_font_size_override("font_size", 28)
+	box.add_child(_overlay_title)
+
+	_overlay_body = Label.new()
+	_overlay_body.text = ""
+	_overlay_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_overlay_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_overlay_body.add_theme_font_size_override("font_size", 15)
+	_overlay_body.add_theme_color_override("font_color", Color(0.8, 0.84, 0.9))
+	box.add_child(_overlay_body)
+
+	_restart_btn = Button.new()
+	_restart_btn.text = "Play Again"
+	_restart_btn.custom_minimum_size = Vector2(0, 46)
+	_restart_btn.pressed.connect(func(): restart_requested.emit())
+	box.add_child(_restart_btn)
+
+	_menu_btn = Button.new()
+	_menu_btn.text = "Main Menu"
+	_menu_btn.custom_minimum_size = Vector2(0, 46)
+	_menu_btn.pressed.connect(func(): menu_requested.emit())
+	box.add_child(_menu_btn)
+
+
 # ── Public: update traits display ──────────────────────────────────────────
 
 func update_synergies(board_units: Array) -> void:
@@ -286,6 +374,40 @@ func set_skip_button_visible(visible_state: bool) -> void:
 	_skip_btn.visible = visible_state
 
 
+func show_round_result(player_won: bool, reason: String = "") -> void:
+	if _result_label == null:
+		return
+	var status: String = "Victory" if player_won else "Defeat"
+	if reason != "":
+		status = "%s - %s" % [status, reason.capitalize()]
+	_result_label.text = status
+	_result_label.add_theme_color_override("font_color", Color(0.55, 0.9, 0.55) if player_won else Color(1.0, 0.45, 0.4))
+	_result_label.visible = true
+
+
+func hide_round_result() -> void:
+	if _result_label != null:
+		_result_label.visible = false
+
+
+func show_run_summary(summary: Dictionary) -> void:
+	if _overlay == null:
+		return
+	var placement: int = summary.get("placement", 0)
+	var reason: String = str(summary.get("reason", "completed")).capitalize()
+	var round_value: int = summary.get("round", 0)
+	var level_value: int = summary.get("level", 1)
+	var gold_value: int = summary.get("gold", 0)
+	_overlay_title.text = "Victory" if placement == 1 else "Run Complete"
+	_overlay_body.text = "Placement #%d\nReason: %s\nRound: %d\nLevel: %d\nGold: %d" % [placement, reason, round_value, level_value, gold_value]
+	_overlay.visible = true
+
+
+func hide_run_summary() -> void:
+	if _overlay != null:
+		_overlay.visible = false
+
+
 # ── Signal handlers ────────────────────────────────────────────────────────
 
 func _on_health_changed(hp: int) -> void:
@@ -311,12 +433,16 @@ func _on_gold_changed(_gold: int) -> void:
 func _on_inventory_changed(items: Array[String]) -> void:
 	for i in _inventory_slots.size():
 		var icon: TextureRect = _inventory_slots[i]
+		var bg: ColorRect = _inventory_slot_bgs[i]
 		if i < items.size():
 			icon.modulate = _item_tint(items[i])
 			icon.tooltip_text = _item_tooltip(items[i])
+			bg.color = Color(0.10, 0.13, 0.18, 0.95)
 		else:
 			icon.modulate = Color(1, 1, 1, 0.0)
 			icon.tooltip_text = ""
+			bg.color = Color(0.10, 0.13, 0.18, 0.45)
+	_refresh_inventory_selection()
 
 
 func _update_stage_dots(current: int) -> void:
@@ -347,6 +473,8 @@ func _bind_scene_peers() -> void:
 	skip_prep_pressed.connect(_on_skip_prep_pressed)
 
 	if _board_ui != null:
+		if not _board_ui.unit_tapped.is_connected(_on_unit_targeted_for_item):
+			_board_ui.unit_tapped.connect(_on_unit_targeted_for_item)
 		_board_ui.unit_placed.connect(func(_unit, _col, _row): _refresh_overview())
 		_board_ui.unit_moved.connect(func(_unit, _from, _to): _refresh_overview())
 		_board_ui.unit_sent_to_bench.connect(func(_unit): _refresh_overview())
@@ -354,6 +482,8 @@ func _bind_scene_peers() -> void:
 	if _bench_ui != null:
 		_bench_ui.unit_sold.connect(func(_unit): _refresh_overview())
 		_bench_ui.unit_selected_from_bench.connect(func(_unit): _refresh_overview())
+		if not _bench_ui.unit_selected_from_bench.is_connected(_on_unit_targeted_for_item):
+			_bench_ui.unit_selected_from_bench.connect(_on_unit_targeted_for_item)
 
 	if _shop_ui != null:
 		_shop_ui.unit_bought.connect(func(_unit_id): _refresh_overview())
@@ -371,6 +501,8 @@ func _on_skip_prep_pressed() -> void:
 
 func _on_phase_changed(phase: int) -> void:
 	_phase = phase
+	if phase == PREP_PHASE:
+		hide_round_result()
 	_refresh_phase_label()
 	_refresh_overview()
 
@@ -397,7 +529,10 @@ func _refresh_overview() -> void:
 	if _skip_btn != null:
 		_skip_btn.text = "▶ Ready" if _touch_hints_enabled else "Ready"
 	if _inventory_label != null:
-		_inventory_label.text = "Items %d/%d" % [GameManager.get_item_inventory_size(), GameManager.MAX_INVENTORY_ITEMS]
+		var label_text := "Items %d/%d" % [GameManager.get_item_inventory_size(), GameManager.MAX_INVENTORY_ITEMS]
+		if _selected_item_index >= 0:
+			label_text += " - Tap item to craft or unit to equip"
+		_inventory_label.text = label_text
 
 
 func _get_team_count() -> int:
@@ -469,3 +604,63 @@ func _item_tooltip(item_id: String) -> String:
 	if item.is_empty():
 		return item_id
 	return "%s\n%s" % [item.get("name", item_id), item.get("description", "")]
+
+
+func _on_run_finished(summary: Dictionary) -> void:
+	show_run_summary(summary)
+
+
+func _on_inventory_slot_pressed(index: int) -> void:
+	var items: Array[String] = GameManager.get_item_inventory()
+	if index >= items.size():
+		return
+	if _selected_item_index == index:
+		_selected_item_index = -1
+		_refresh_inventory_selection()
+		_refresh_overview()
+		return
+	if _selected_item_index == -1:
+		_selected_item_index = index
+		_refresh_inventory_selection()
+		_refresh_overview()
+		return
+
+	var crafted_item: String = GameManager.craft_inventory_items(_selected_item_index, index)
+	_selected_item_index = -1
+	if crafted_item != "":
+		_result_label.text = "Crafted %s" % DataManager.get_item(crafted_item).get("name", crafted_item)
+		_result_label.add_theme_color_override("font_color", Color(1.0, 0.83, 0.42))
+		_result_label.visible = true
+	else:
+		_result_label.text = "No valid recipe"
+		_result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+		_result_label.visible = true
+	_refresh_inventory_selection()
+	_refresh_overview()
+
+
+func _on_unit_targeted_for_item(unit: Unit) -> void:
+	if _selected_item_index < 0 or unit == null:
+		return
+	if GameManager.equip_inventory_item_to_unit(_selected_item_index, unit):
+		_selected_item_index = -1
+		_result_label.text = "Equipped %s" % unit.unit_name
+		_result_label.add_theme_color_override("font_color", Color(0.55, 0.9, 0.55))
+		_result_label.visible = true
+		_refresh_inventory_selection()
+		_refresh_overview()
+	else:
+		_result_label.text = "Unit already has an item"
+		_result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+		_result_label.visible = true
+
+
+func _refresh_inventory_selection() -> void:
+	for i in _inventory_slot_bgs.size():
+		var bg: ColorRect = _inventory_slot_bgs[i]
+		if i == _selected_item_index:
+			bg.color = Color(0.95, 0.78, 0.18, 0.95)
+		elif i < GameManager.get_item_inventory_size():
+			bg.color = Color(0.10, 0.13, 0.18, 0.95)
+		else:
+			bg.color = Color(0.10, 0.13, 0.18, 0.45)
