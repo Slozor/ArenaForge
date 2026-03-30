@@ -103,11 +103,11 @@ func _process(delta: float) -> void:
 	# --- Passive tick ---
 	var all_units: Array = player_units + enemy_units
 	for unit in all_units:
-		if int(unit.state) == DEAD_STATE:
-			continue
 		var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
 		var enemies: Array = _get_enemies_of(unit)
 		var allies: Array = _get_allies_of(unit)
+		if int(unit.state) == DEAD_STATE and unit.passive != "death_curse":
+			continue
 		PassiveHandler.on_tick(unit, us.get("passive", {}), delta, allies, enemies)
 
 	# --- Timed effects ---

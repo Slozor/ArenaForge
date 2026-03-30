@@ -41,6 +41,11 @@
       "file": "ui/trait_badge.svg"
     },
     {
+      "id": "card_frames",
+      "replacement_priority": "high",
+      "file": "ui/card_frame.svg"
+    },
+    {
       "id": "item_icons",
       "replacement_priority": "medium",
       "file": "items/placeholder_item.svg"
@@ -49,12 +54,18 @@
       "id": "board_tiles",
       "replacement_priority": "medium",
       "file": "ui/board_tile.svg"
+    },
+    {
+      "id": "bench_slots",
+      "replacement_priority": "medium",
+      "file": "ui/bench_slot.svg"
     }
   ],
   "candidate_sources": [
     {
       "name": "Kenney",
       "license": "CC0",
+      "url": "https://kenney.nl/assets/ui-pack",
       "use_for": [
         "UI panels",
         "icons",
@@ -64,9 +75,20 @@
     {
       "name": "OpenGameArt CC0 subset",
       "license": "CC0 only",
+      "url": "https://opengameart.org/",
       "use_for": [
         "specific replacement art",
         "background details"
+      ]
+    },
+    {
+      "name": "Teamfight Tactics homepage",
+      "license": "reference only",
+      "url": "https://teamfighttactics.leagueoflegends.com/en-us/",
+      "use_for": [
+        "readability target",
+        "platform framing",
+        "board readability"
       ]
     }
   ]

@@ -4,6 +4,7 @@ class_name UnitCard
 
 const CARD_W: float = 148.0
 const CARD_H: float = 168.0
+const FRAME_TEXTURE: Texture2D = preload("res://assets/ui/card_frame.svg")
 
 const COST_COLORS: Dictionary = {
 	1: Color(0.55, 0.55, 0.58),
@@ -26,6 +27,7 @@ var is_empty: bool = true
 signal card_tapped(uid: String)
 
 var _portrait:    TextureRect
+var _frame:       TextureRect
 var _name_label:  Label
 var _cost_badge:  ColorRect
 var _cost_label:  Label
@@ -44,6 +46,14 @@ func _ready() -> void:
 	_portrait.stretch_mode = TextureRect.STRETCH_SCALE
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_portrait)
+
+	_frame = TextureRect.new()
+	_frame.texture = FRAME_TEXTURE
+	_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_frame.stretch_mode = TextureRect.STRETCH_SCALE
+	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_frame)
 
 	_cost_badge = ColorRect.new()
 	_cost_badge.color = UITheme.BG_PANEL
@@ -121,6 +131,7 @@ func _refresh_display() -> void:
 	var label_col: Color = COST_LABEL_COLORS.get(cost, UITheme.TEXT_PRIMARY)
 
 	_portrait.modulate = border.darkened(0.55)
+	_frame.modulate = border.lightened(0.15)
 	_name_label.text = unit_data.get("name", "?")
 
 	_cost_badge.color = border.darkened(0.2)
@@ -138,6 +149,7 @@ func _refresh_display() -> void:
 
 func _show_empty() -> void:
 	_portrait.modulate = UITheme.BG_CARD
+	_frame.modulate = UITheme.BG_PANEL
 	_name_label.text   = ""
 	_cost_label.text   = ""
 	_cost_badge.color  = UITheme.BG_PANEL
@@ -191,8 +203,12 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(-3, -3), Vector2(CARD_W + 6, CARD_H + 6)), glow_col, true)
 	# Card bg
 	draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)), UITheme.BG_CARD, true)
+	draw_rect(Rect2(Vector2(4, 4), Vector2(CARD_W - 8, CARD_H * 0.56)), Color(0.10, 0.16, 0.24, 0.92), true)
+	draw_rect(Rect2(Vector2(4, CARD_H - 50), Vector2(CARD_W - 8, 46)), Color(0.05, 0.08, 0.13, 0.92), true)
 	# Border
 	draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)), border_col, false, border_w)
 	# Top accent line
 	if not is_empty:
 		draw_rect(Rect2(Vector2(0, 0), Vector2(CARD_W, 3)), border_col, true)
+		draw_rect(Rect2(Vector2(8, CARD_H - 54), Vector2(CARD_W - 16, 1)), Color(1, 1, 1, 0.08), true)
+		draw_rect(Rect2(Vector2(8, 78), Vector2(CARD_W - 16, 1)), Color(border_col.r, border_col.g, border_col.b, 0.28), true)

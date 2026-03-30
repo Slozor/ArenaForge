@@ -320,6 +320,7 @@ func _build_overlay() -> void:
 	_overlay_panel = PanelContainer.new()
 	_overlay_panel.custom_minimum_size = Vector2(420, 260)
 	_overlay_panel.add_theme_stylebox_override("panel", UITheme.panel_style(UITheme.BG_PANEL, UITheme.GOLD, 8, 1))
+	_overlay_panel.clip_contents = true
 	center.add_child(_overlay_panel)
 
 	var margin := MarginContainer.new()
@@ -369,6 +370,8 @@ func _build_inspect_panel() -> void:
 	_inspect_panel = PanelContainer.new()
 	_inspect_panel.visible = false
 	_inspect_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_style(UITheme.BG_PANEL, UITheme.BORDER_MID, 8, 2))
+	_inspect_panel.clip_contents = true
 	add_child(_inspect_panel)
 
 	var margin := MarginContainer.new()

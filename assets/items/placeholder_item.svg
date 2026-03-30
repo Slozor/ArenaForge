@@ -1,6 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect x="18" y="18" width="92" height="92" rx="18" fill="#111827"/>
-  <path d="M64 24 84 52 64 104 44 52Z" fill="#60a5fa"/>
-  <path d="M64 28 76 52 64 96 52 52Z" fill="#bfdbfe"/>
-  <circle cx="64" cy="52" r="8" fill="#f59e0b"/>
+  <defs>
+    <linearGradient id="gem" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8ce7ff"/>
+      <stop offset="100%" stop-color="#2f79cf"/>
+    </linearGradient>
+  </defs>
+  <rect x="14" y="14" width="100" height="100" rx="22" fill="#09111d" stroke="#f1d18a" stroke-opacity="0.18" stroke-width="4"/>
+  <path d="M64 20 90 48 78 92 64 108 50 92 38 48Z" fill="url(#gem)"/>
+  <path d="M64 28 80 48 72 86 64 96 56 86 48 48Z" fill="#d2f5ff" fill-opacity="0.70"/>
+  <path d="M38 48h52" stroke="#f4e3b2" stroke-opacity="0.18" stroke-width="3"/>
+  <circle cx="64" cy="48" r="6" fill="#f2c15f"/>
 </svg>

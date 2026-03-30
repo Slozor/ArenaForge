@@ -8,7 +8,7 @@ const SLOT_GAP: float = 8.0
 const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
-const SLOT_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
+const SLOT_TEXTURE: Texture2D = preload("res://assets/ui/bench_slot.svg")
 const PORTRAIT_TEXTURE: Texture2D = preload("res://assets/portraits/placeholder_unit.svg")
 const UNIT_SCRIPT_PATH: String = "res://scripts/units/unit.gd"
 const COST_COLORS: Dictionary = {
@@ -387,7 +387,7 @@ func _sell_unit(slot_idx: int) -> void:
 	var unit = _units[slot_idx]
 	if unit == null:
 		return
-	var sell_value: int = unit.cost * unit.star_level
+	var sell_value: int = unit.cost * int(pow(3.0, float(unit.star_level - 1)))
 	GameManager.add_gold(sell_value)
 	unit_sold.emit(unit)
 	_units[slot_idx] = null

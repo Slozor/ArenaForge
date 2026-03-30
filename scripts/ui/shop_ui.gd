@@ -161,67 +161,12 @@ func _build_buttons() -> void:
 
 
 func _make_unit_card():
-	# Inline card scene construction
 	var card_script: Script = load(UNIT_CARD_SCRIPT_PATH)
 	if card_script == null:
 		push_error("ShopUI: could not load %s" % UNIT_CARD_SCRIPT_PATH)
 		return null
 	var card = card_script.new()
 	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
-
-	var portrait := TextureRect.new()
-	portrait.name = "Portrait"
-	portrait.custom_minimum_size = Vector2(CARD_W, 90)
-	portrait.position = Vector2.ZERO
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_SCALE
-	card.add_child(portrait)
-
-	var name_lbl := Label.new()
-	name_lbl.name = "NameLabel"
-	name_lbl.position = Vector2(4, 94)
-	name_lbl.custom_minimum_size = Vector2(CARD_W - 8, 20)
-	name_lbl.add_theme_font_size_override("font_size", 13)
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(name_lbl)
-
-	var cost_lbl := Label.new()
-	cost_lbl.name = "CostLabel"
-	cost_lbl.position = Vector2(4, 116)
-	cost_lbl.custom_minimum_size = Vector2(CARD_W - 8, 18)
-	cost_lbl.add_theme_font_size_override("font_size", 14)
-	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(cost_lbl)
-
-	var race_lbl := Label.new()
-	race_lbl.name = "RaceLabel"
-	race_lbl.position = Vector2(4, 134)
-	race_lbl.custom_minimum_size = Vector2((CARD_W - 8) / 2.0, 16)
-	race_lbl.add_theme_font_size_override("font_size", 11)
-	race_lbl.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
-	card.add_child(race_lbl)
-
-	var trait_lbl := Label.new()
-	trait_lbl.name = "TraitLabel"
-	trait_lbl.position = Vector2(CARD_W / 2.0, 134)
-	trait_lbl.custom_minimum_size = Vector2((CARD_W - 8) / 2.0, 16)
-	trait_lbl.add_theme_font_size_override("font_size", 11)
-	trait_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
-	card.add_child(trait_lbl)
-
-	var overlay := ColorRect.new()
-	overlay.name = "Overlay"
-	overlay.color = Color(0, 0, 0, 0)
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_child(overlay)
-
-	var tap := Button.new()
-	tap.name = "TapArea"
-	tap.flat = true
-	tap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	card.add_child(tap)
-
 	return card
 
 
@@ -345,7 +290,6 @@ func _on_card_tapped(unit_id: String) -> void:
 	if not _bench_ui.add_unit_from_shop(unit_id):
 		var cost: int = DataManager.get_unit(unit_id).get("cost", 1)
 		GameManager.add_gold(cost)
-		ShopManager.return_unit_to_pool(unit_id)
 		ShopManager.shop_units.append(unit_id)
 		ShopManager.shop_refreshed.emit(ShopManager.shop_units)
 		_set_status("Bench full")

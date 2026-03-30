@@ -8,7 +8,7 @@ const CELL_SIZE: float = 96.0
 const BOARD_OFFSET: Vector2 = Vector2(304.0, 55.0)  # centered in 1280x720, below HUD (50px)
 const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
-const TILE_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
+const HEX_RADIUS_RATIO: float = 0.43
 
 enum InputState { IDLE, UNIT_SELECTED }
 
@@ -297,7 +297,7 @@ func cell_to_world(col: int, row: int) -> Vector2:
 
 
 func combat_cell_to_world(col: int, row: int) -> Vector2:
-	var combat_cell_h: float = _cell_size * 0.5
+	var combat_cell_h: float = _cell_size * 0.50
 	return _board_offset + Vector2(col * _cell_size + _cell_size * 0.5, row * combat_cell_h + combat_cell_h * 0.5)
 
 
@@ -320,31 +320,30 @@ func _draw_board() -> void:
 
 func _draw() -> void:
 	# Board outer frame
-	var board_rect := Rect2(_board_offset - Vector2(12, 12), Vector2(COLS * _cell_size + 24, ROWS * _cell_size + 24))
+	var board_rect := Rect2(_board_offset - Vector2(18, 18), Vector2(COLS * _cell_size + 36, ROWS * _cell_size + 36))
 	draw_rect(board_rect, UITheme.BG_DARK, true)
 	draw_rect(board_rect, UITheme.GOLD, false, 2.0)
 	_draw_lane_labels()
 
 	for col in COLS:
 		for row in ROWS:
-			var rect_pos: Vector2 = _board_offset + Vector2(col * _cell_size, row * _cell_size)
-			var rect := Rect2(rect_pos, Vector2(_cell_size - 2, _cell_size - 2))
-			# Tile base
-			draw_rect(rect, UITheme.BOARD_TILE, true)
-			# Top highlight bevel
-			draw_rect(Rect2(rect.position, Vector2(rect.size.x, 2)), UITheme.BOARD_BORDER, true)
-			# Left highlight bevel
-			draw_rect(Rect2(rect.position, Vector2(2, rect.size.y)), UITheme.BOARD_BORDER, true)
-			# Border
-			draw_rect(rect, UITheme.BOARD_BORDER, false, 1.0)
+			var center: Vector2 = _cell_to_world(col, row)
+			var radius: float = _cell_size * HEX_RADIUS_RATIO
+			var points: PackedVector2Array = _hex_points(center, radius)
+			var fill: Color = UITheme.BOARD_TILE
+			if row == 0:
+				fill = fill.lightened(0.08)
+			elif row == ROWS - 1:
+				fill = fill.lightened(0.04)
+			draw_colored_polygon(points, fill)
+			_draw_hex_outline(points, UITheme.BOARD_BORDER, 1.4)
 
-			# Selection highlights
 			if selected_unit != null and selected_from_bench and grid[col][row] == null:
-				draw_rect(rect.grow(-6), Color(UITheme.TEAL.r, UITheme.TEAL.g, UITheme.TEAL.b, 0.18), true)
-				draw_rect(rect.grow(-6), UITheme.TEAL, false, 2.0)
+				draw_colored_polygon(points, Color(UITheme.TEAL.r, UITheme.TEAL.g, UITheme.TEAL.b, 0.16))
+				_draw_hex_outline(points, UITheme.TEAL, 2.2)
 			elif selected_unit != null and not selected_from_bench and Vector2i(col, row) == selected_from_cell:
-				draw_rect(rect.grow(-6), Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.20), true)
-				draw_rect(rect.grow(-6), UITheme.GOLD_BRIGHT, false, 2.5)
+				draw_colored_polygon(points, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.18))
+				_draw_hex_outline(points, UITheme.GOLD_BRIGHT, 2.4)
 
 
 func _highlight_valid_cells() -> void:
@@ -353,21 +352,6 @@ func _highlight_valid_cells() -> void:
 
 func _clear_highlights() -> void:
 	queue_redraw()
-
-
-func _tile_tint_for(col: int, row: int) -> Color:
-	var tint: Color = Color(0.82, 0.90, 1.0, 0.92)
-	if row == 0:
-		tint = Color(0.92, 0.86, 0.74, 0.96)
-	elif row == ROWS - 1:
-		tint = Color(0.74, 0.92, 0.82, 0.96)
-
-	if selected_from_bench:
-		tint = tint.lerp(Color(0.42, 1.0, 0.62, 1.0), 0.28)
-	elif selected_unit != null and not selected_from_bench and Vector2i(col, row) == selected_from_cell:
-		tint = tint.lerp(Color(1.0, 0.88, 0.42, 1.0), 0.45)
-
-	return tint
 
 
 func _draw_lane_labels() -> void:
@@ -422,8 +406,17 @@ func _refresh_layout() -> void:
 	var board_h: float = float(ROWS) * _cell_size
 	_board_offset = Vector2(left_margin + (usable_w - board_w) * 0.5, top_margin + (usable_h - board_h) * 0.5)
 	_label_font_size = int(clampf(_cell_size * 0.14, 10.0, 14.0))
-	for unit in get_all_placed_units():
-		unit.position = _cell_to_world(unit.board_position.x, unit.board_position.y)
+	for child in get_children():
+		if child == null or not is_instance_valid(child):
+			continue
+		if not (child is Node2D):
+			continue
+		if not child.has_method("get_attack_damage"):
+			continue
+		if child.board_position.y >= ROWS:
+			child.position = combat_cell_to_world(child.board_position.x, child.board_position.y)
+		elif child.board_position.x >= 0 and child.board_position.y >= 0:
+			child.position = _cell_to_world(child.board_position.x, child.board_position.y)
 	queue_redraw()
 
 
@@ -452,3 +445,17 @@ func _can_send_unit_to_bench(unit) -> bool:
 	if _bench_ui == null:
 		return false
 	return _bench_ui.can_accept_unit(unit)
+
+
+func _hex_points(center: Vector2, radius: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 6:
+		var angle: float = deg_to_rad(60.0 * i - 30.0)
+		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	return points
+
+
+func _draw_hex_outline(points: PackedVector2Array, color: Color, width: float) -> void:
+	for i in points.size():
+		var next_index: int = (i + 1) % points.size()
+		draw_line(points[i], points[next_index], color, width)

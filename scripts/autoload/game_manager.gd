@@ -282,7 +282,7 @@ func get_final_placement() -> int:
 
 
 func take_damage(amount: int) -> void:
-	player_health -= amount
+	player_health = maxi(0, player_health - amount)
 	health_changed.emit(player_health)
 	if player_health <= 0:
 		change_state(GameState.GAME_OVER)
