@@ -171,6 +171,7 @@ func _try_attack(unit: Unit, us: Dictionary) -> void:
 	# Dragon race burn: dealt as flat damage before armor (applied by CombatController)
 	var burn_active: bool = _has_dragon_burn_synergy(unit)
 
+	unit.play_attack_pulse()
 	target.take_damage(final_dmg)
 
 	if burn_active and target.state != Unit.State.DEAD:
@@ -305,6 +306,7 @@ func _apply_burn(target: Unit) -> void:
 		"dps": 10,
 		"accumulator": 0.0
 	}
+	target.set_burn_visual(1.0)
 
 
 func _tick_burn(delta: float) -> void:
@@ -351,6 +353,7 @@ func _apply_attack_speed_slow(target: Unit, duration: float, slow_percent: float
 	var original_temp_mod: float = target.temp_attack_speed_mod
 	var slow_amount: float = target.get_attack_speed() * slow_percent
 	target.temp_attack_speed_mod = original_temp_mod - slow_amount
+	target.set_slow_visual(1.0)
 	_slow_targets[id] = {
 		"timer": duration,
 		"original_temp_mod": original_temp_mod
