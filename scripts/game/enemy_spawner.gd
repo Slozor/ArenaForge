@@ -18,10 +18,10 @@ func _ready() -> void:
 	_unit_scene = load(UNIT_SCENE_PATH)
 
 
-# Returns an Array[Unit] with all enemy units placed on the enemy side of the
+# Returns an array with all enemy units placed on the enemy side of the
 # board (rows 4-7, back rows first). Board positions use the full 7x8 coordinate
 # space where row 0 is the player's front row and row 7 is the enemy's back row.
-func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array[Unit]:
+func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array:
 	var round_entry: Dictionary = get_round_data(round_num)
 	if round_entry.is_empty():
 		push_error("EnemySpawner: no data for round %d" % round_num)
@@ -29,7 +29,7 @@ func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array[Unit]:
 
 	var unit_ids: Array = _resolve_unit_ids(round_entry, opponent_index)
 	var positions: Array[Vector2i] = _build_positions(unit_ids.size())
-	var spawned: Array[Unit] = []
+	var spawned: Array = []
 
 	for i in unit_ids.size():
 		var uid: String = unit_ids[i]
@@ -38,7 +38,7 @@ func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array[Unit]:
 			push_error("EnemySpawner: unknown unit id '%s'" % uid)
 			continue
 
-		var unit: Unit = _instantiate_unit(unit_data)
+		var unit = _instantiate_unit(unit_data)
 		if unit == null:
 			continue
 
@@ -107,17 +107,16 @@ func _spread_columns(count: int, total_cols: int) -> Array[int]:
 
 # ── Unit instantiation ────────────────────────────────────────────────────────
 
-func _instantiate_unit(unit_data: Dictionary) -> Unit:
+func _instantiate_unit(unit_data: Dictionary):
 	if _unit_scene == null:
-		# Fallback: create a bare Unit node if the scene is not available.
-		var unit: Unit = Unit.new()
+		var unit = Unit.new()
 		unit.init(unit_data)
 		add_child(unit)
 		return unit
 
-	var unit: Unit = _unit_scene.instantiate() as Unit
+	var unit = _unit_scene.instantiate()
 	if unit == null:
-		push_error("EnemySpawner: UNIT_SCENE_PATH does not produce a Unit node")
+		push_error("EnemySpawner: UNIT_SCENE_PATH does not produce a valid unit node")
 		return null
 	unit.init(unit_data)
 	add_child(unit)

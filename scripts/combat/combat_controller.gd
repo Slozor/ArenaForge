@@ -2,6 +2,11 @@ extends Node
 
 class_name CombatController
 
+const DEAD_STATE: int = 3
+const IDLE_STATE: int = 0
+const MOVING_STATE: int = 1
+const ATTACKING_STATE: int = 2
+
 # How often units move one cell (seconds)
 const MOVE_INTERVAL: float = 0.35
 # How many seconds before sudden death
@@ -32,9 +37,9 @@ var _burn_targets: Dictionary = {}
 # Attack speed slow: unit id -> { timer, original_speed }
 var _slow_targets: Dictionary = {}
 
-signal unit_attacked(attacker: Unit, target: Unit, damage: int)
-signal unit_moved(unit: Unit, to: Vector2i)
-signal unit_died(unit: Unit, is_player_unit: bool)
+signal unit_attacked(attacker, target, damage: int)
+signal unit_moved(unit, to: Vector2i)
+signal unit_died(unit, is_player_unit: bool)
 signal combat_ended(player_won: bool)
 
 
@@ -98,7 +103,7 @@ func _process(delta: float) -> void:
 	# --- Passive tick ---
 	var all_units: Array = player_units + enemy_units
 	for unit in all_units:
-		if unit.state == Unit.State.DEAD:
+		if int(unit.state) == DEAD_STATE:
 			continue
 		var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
 		var enemies: Array = _get_enemies_of(unit)
@@ -126,21 +131,21 @@ func _process(delta: float) -> void:
 
 func _tick_movement() -> void:
 	for unit in player_units + enemy_units:
-		if unit.state == Unit.State.DEAD:
+		if int(unit.state) == DEAD_STATE:
 			continue
-		var target: Unit = _acquire_target(unit)
+		var target = _acquire_target(unit)
 		if target == null:
 			continue
 		if UnitAI.in_attack_range(unit, target):
-			unit.state = Unit.State.ATTACKING
+			unit.state = ATTACKING_STATE
 			continue
-		unit.state = Unit.State.MOVING
+		unit.state = MOVING_STATE
 		var next: Vector2i = UnitAI.next_move_toward(unit, target, _occupied)
 		if next != Vector2i(-1, -1):
 			_move_unit(unit, next)
 
 
-func _move_unit(unit: Unit, to: Vector2i) -> void:
+func _move_unit(unit, to: Vector2i) -> void:
 	_occupied.erase(unit.board_position)
 	unit.board_position = to
 	_occupied[to] = unit
@@ -151,7 +156,7 @@ func _move_unit(unit: Unit, to: Vector2i) -> void:
 
 func _tick_attacks(delta: float) -> void:
 	for unit in player_units + enemy_units:
-		if unit.state == Unit.State.DEAD:
+		if int(unit.state) == DEAD_STATE:
 			continue
 		var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
 		us["atk_timer"] -= delta
@@ -160,9 +165,9 @@ func _tick_attacks(delta: float) -> void:
 			_try_attack(unit, us)
 
 
-func _try_attack(unit: Unit, us: Dictionary) -> void:
-	var target: Unit = _acquire_target(unit)
-	if target == null or target.state == Unit.State.DEAD:
+func _try_attack(unit, us: Dictionary) -> void:
+	var target = _acquire_target(unit)
+	if target == null or int(target.state) == DEAD_STATE:
 		return
 	if not UnitAI.in_attack_range(unit, target):
 		return
@@ -176,7 +181,7 @@ func _try_attack(unit: Unit, us: Dictionary) -> void:
 	unit.play_attack_pulse()
 	target.take_damage(final_dmg)
 
-	if burn_active and target.state != Unit.State.DEAD:
+	if burn_active and int(target.state) != DEAD_STATE:
 		_apply_burn(target)
 
 	_apply_item_proc_on_hit(unit, target, final_dmg)
@@ -185,7 +190,7 @@ func _try_attack(unit: Unit, us: Dictionary) -> void:
 
 	PassiveHandler.on_hit(unit, target, final_dmg, us.get("passive", {}), _get_enemies_of(unit))
 
-	if target.state == Unit.State.DEAD:
+	if int(target.state) == DEAD_STATE:
 		PassiveHandler.on_kill(unit, target, us.get("passive", {}))
 
 
@@ -196,7 +201,7 @@ func _apply_assassin_leaps() -> void:
 		if unit.trait != "assassin":
 			continue
 		var enemies: Array = _get_enemies_of(unit)
-		var bt: Unit = UnitAI.find_assassin_target(unit, enemies)
+		var bt = UnitAI.find_assassin_target(unit, enemies)
 		if bt == null:
 			continue
 		# Find nearest free cell adjacent to the backline target
@@ -229,18 +234,18 @@ func _apply_guardian_shields() -> void:
 
 # ── Targeting ───────────────────────────────────────────────────────────────
 
-func _acquire_target(unit: Unit) -> Unit:
+func _acquire_target(unit):
 	var enemies: Array = _get_enemies_of(unit)
 	return UnitAI.find_target(unit, enemies)
 
 
-func _get_enemies_of(unit: Unit) -> Array:
+func _get_enemies_of(unit) -> Array:
 	if unit in player_units:
 		return enemy_units
 	return player_units
 
 
-func _get_allies_of(unit: Unit) -> Array:
+func _get_allies_of(unit) -> Array:
 	if unit in player_units:
 		return player_units
 	return enemy_units
@@ -248,7 +253,7 @@ func _get_allies_of(unit: Unit) -> Array:
 
 # ── Death ───────────────────────────────────────────────────────────────────
 
-func _on_unit_died(unit: Unit) -> void:
+func _on_unit_died(unit) -> void:
 	var is_player: bool = unit in player_units
 	var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
 	var nearby: Array = _get_units_within_range(unit, 1, _get_enemies_of(unit))
@@ -265,10 +270,10 @@ func _on_unit_died(unit: Unit) -> void:
 	_check_end()
 
 
-func _revive_unit(unit: Unit) -> void:
+func _revive_unit(unit) -> void:
 	unit.has_revived = true
 	unit.current_health = int(float(unit.get_max_health()) * 0.50)
-	unit.state = Unit.State.IDLE
+	unit.state = IDLE_STATE
 	unit.temp_attack_speed_mod = 0.0
 	unit.cancel_death_visuals()
 	_register_position(unit)
@@ -279,18 +284,18 @@ func _revive_unit(unit: Unit) -> void:
 
 # ── Synergy helpers ──────────────────────────────────────────────────────────
 
-func _has_dragon_burn_synergy(unit: Unit) -> bool:
+func _has_dragon_burn_synergy(unit) -> bool:
 	if unit.race != "dragon":
 		return false
 	var team: Array = _get_allies_of(unit)
 	var count: int = 0
 	for u in team:
-		if u.race == "dragon" and u.state != Unit.State.DEAD:
+		if u.race == "dragon" and int(u.state) != DEAD_STATE:
 			count += 1
 	return count >= 2
 
 
-func _has_undead_revive_synergy(unit: Unit) -> bool:
+func _has_undead_revive_synergy(unit) -> bool:
 	if unit.race != "undead" or unit.has_revived:
 		return false
 	var team: Array = _get_allies_of(unit)
@@ -303,7 +308,7 @@ func _has_undead_revive_synergy(unit: Unit) -> bool:
 
 # ── Burn DoT (Dragon race) ───────────────────────────────────────────────────
 
-func _apply_burn(target: Unit) -> void:
+func _apply_burn(target) -> void:
 	_burn_targets[target.get_instance_id()] = {
 		"timer": 3.0,
 		"dps": 10,
@@ -319,8 +324,8 @@ func _tick_burn(delta: float) -> void:
 		b["timer"] -= delta
 		b["accumulator"] += float(b.get("dps", 0)) * delta
 		for unit in player_units + enemy_units:
-			if unit.get_instance_id() == id and unit.state != Unit.State.DEAD:
-				while b["accumulator"] >= 1.0 and unit.state != Unit.State.DEAD:
+			if unit.get_instance_id() == id and int(unit.state) != DEAD_STATE:
+				while b["accumulator"] >= 1.0 and int(unit.state) != DEAD_STATE:
 					b["accumulator"] -= 1.0
 					unit.take_damage(1, true)
 				break
@@ -332,13 +337,13 @@ func _tick_burn(delta: float) -> void:
 		_burn_targets.erase(id)
 
 
-func _apply_item_proc_on_hit(attacker: Unit, defender: Unit, damage_dealt: int) -> void:
+func _apply_item_proc_on_hit(attacker, defender, damage_dealt: int) -> void:
 	match attacker.equipped_item:
 		"vampiric_blade":
 			var heal_amount: int = maxi(1, int(float(damage_dealt) * 0.15))
 			attacker.heal(heal_amount)
 		"frozen_heart":
-			if defender.state != Unit.State.DEAD:
+			if int(defender.state) != DEAD_STATE:
 				_apply_attack_speed_slow(defender, 2.0, 0.25)
 
 	match defender.equipped_item:
@@ -347,7 +352,7 @@ func _apply_item_proc_on_hit(attacker: Unit, defender: Unit, damage_dealt: int) 
 			attacker.take_damage(reflected, true)
 
 
-func _apply_attack_speed_slow(target: Unit, duration: float, slow_percent: float) -> void:
+func _apply_attack_speed_slow(target, duration: float, slow_percent: float) -> void:
 	var id: int = target.get_instance_id()
 	if _slow_targets.has(id):
 		_slow_targets[id]["timer"] = duration
@@ -370,7 +375,7 @@ func _tick_slow_effects(delta: float) -> void:
 		entry["timer"] -= delta
 		if entry["timer"] <= 0.0:
 			for unit in player_units + enemy_units:
-				if unit.get_instance_id() == id and unit.state != Unit.State.DEAD:
+				if unit.get_instance_id() == id and int(unit.state) != DEAD_STATE:
 					unit.temp_attack_speed_mod = float(entry.get("original_temp_mod", 0.0))
 					break
 			expired.append(id)
@@ -389,7 +394,7 @@ func _apply_sudden_death(delta: float) -> void:
 		return
 	_sudden_death_accumulator -= float(tick_damage)
 	for unit in player_units + enemy_units:
-		if unit.state != Unit.State.DEAD:
+		if int(unit.state) != DEAD_STATE:
 			unit.take_damage(tick_damage, true)
 
 
@@ -398,8 +403,8 @@ func _apply_sudden_death(delta: float) -> void:
 func _check_end() -> void:
 	if _combat_ended:
 		return
-	var players_alive: int = player_units.filter(func(u): return u.state != Unit.State.DEAD).size()
-	var enemies_alive: int = enemy_units.filter(func(u): return u.state != Unit.State.DEAD).size()
+	var players_alive: int = player_units.filter(func(u): return int(u.state) != DEAD_STATE).size()
+	var enemies_alive: int = enemy_units.filter(func(u): return int(u.state) != DEAD_STATE).size()
 
 	if players_alive == 0 or enemies_alive == 0:
 		_end_combat(enemies_alive == 0)
@@ -415,12 +420,12 @@ func _end_combat(player_won: bool) -> void:
 
 # ── Utility ──────────────────────────────────────────────────────────────────
 
-func _register_position(unit: Unit) -> void:
+func _register_position(unit) -> void:
 	if unit.board_position != Vector2i(-1, -1):
 		_occupied[unit.board_position] = unit
 
 
-func _find_free_adjacent(center: Vector2i, mover: Unit) -> Vector2i:
+func _find_free_adjacent(center: Vector2i, mover) -> Vector2i:
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
 			if dx == 0 and dy == 0:
@@ -431,10 +436,10 @@ func _find_free_adjacent(center: Vector2i, mover: Unit) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-func _get_units_within_range(origin: Unit, range_cells: int, candidates: Array) -> Array:
+func _get_units_within_range(origin, range_cells: int, candidates: Array) -> Array:
 	var result: Array = []
 	for u in candidates:
-		if u.state == Unit.State.DEAD:
+		if int(u.state) == DEAD_STATE:
 			continue
 		var d: int = maxi(
 			abs(u.board_position.x - origin.board_position.x),

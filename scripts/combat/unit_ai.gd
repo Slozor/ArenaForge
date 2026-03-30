@@ -2,21 +2,23 @@ extends RefCounted
 
 class_name UnitAI
 
+const DEAD_STATE: int = 3
+
 # Full combat board: 7 cols x 8 rows (player rows 4-7, enemy rows 0-3)
 const COMBAT_COLS: int = 7
 const COMBAT_ROWS: int = 8
 
 # Find the best target for a unit from the enemy list.
 # Priority: closest unit. Tiebreak: prefer non-assassins (tanks first).
-static func find_target(unit: Unit, enemies: Array) -> Unit:
+static func find_target(unit, enemies: Array):
 	if unit.trait == "assassin":
 		return find_assassin_target(unit, enemies)
 
-	var best_target: Unit = null
+	var best_target = null
 	var best_score: float = INF
 
 	for enemy in enemies:
-		if enemy.state == Unit.State.DEAD:
+		if int(enemy.state) == DEAD_STATE:
 			continue
 		var dist: float = _combat_distance(unit.board_position, enemy.board_position)
 		# Role tiebreaker: tanks (warrior/guardian) get +0, others +0.1, assassins +0.2
@@ -30,11 +32,11 @@ static func find_target(unit: Unit, enemies: Array) -> Unit:
 
 
 # Find the weakest enemy (lowest current HP) — used by assassins.
-static func find_weakest_enemy(enemies: Array) -> Unit:
-	var weakest: Unit = null
+static func find_weakest_enemy(enemies: Array):
+	var weakest = null
 	var lowest_hp: int = INF
 	for enemy in enemies:
-		if enemy.state == Unit.State.DEAD:
+		if int(enemy.state) == DEAD_STATE:
 			continue
 		if enemy.current_health < lowest_hp:
 			lowest_hp = enemy.current_health
@@ -43,12 +45,12 @@ static func find_weakest_enemy(enemies: Array) -> Unit:
 
 
 # Find the assassin target: weakest enemy, with a backline-friendly tiebreak.
-static func find_assassin_target(unit: Unit, enemies: Array) -> Unit:
-	var best: Unit = null
+static func find_assassin_target(unit, enemies: Array):
+	var best = null
 	var lowest_hp: int = INF
 	var farthest_dist: float = -1.0
 	for enemy in enemies:
-		if enemy.state == Unit.State.DEAD:
+		if int(enemy.state) == DEAD_STATE:
 			continue
 		var hp: int = enemy.current_health
 		var dist: float = _combat_distance(unit.board_position, enemy.board_position)
@@ -60,19 +62,19 @@ static func find_assassin_target(unit: Unit, enemies: Array) -> Unit:
 
 
 # Keep the old helper for callers that still expect a backline-ish pick.
-static func find_backline_target(unit: Unit, enemies: Array) -> Unit:
+static func find_backline_target(unit, enemies: Array):
 	return find_assassin_target(unit, enemies)
 
 
 # Returns true if the unit is within attack range of the target.
-static func in_attack_range(unit: Unit, target: Unit) -> bool:
+static func in_attack_range(unit, target) -> bool:
 	return _combat_distance(unit.board_position, target.board_position) <= float(unit.attack_range)
 
 
 # Returns the next cell to move toward the target.
 # Tries the diagonal/straight step that gets closest.
 # Returns Vector2i(-1,-1) if already at target or no move possible.
-static func next_move_toward(unit: Unit, target: Unit, occupied: Dictionary) -> Vector2i:
+static func next_move_toward(unit, target, occupied: Dictionary) -> Vector2i:
 	var from: Vector2i = unit.board_position
 	var to: Vector2i = target.board_position
 

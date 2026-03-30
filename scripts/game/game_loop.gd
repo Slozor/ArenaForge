@@ -17,13 +17,13 @@ var combat_timer: float = 0.0
 var win_streak: int = 0
 var loss_streak: int = 0
 
-var board_ui: BoardUI = null
-var bench_ui: BenchUI = null
-var hud_ui: HudUI = null
-var shop_ui: ShopUI = null
-var combat_controller: CombatController = null
-var enemy_spawner: EnemySpawner = null
-var enemy_units: Array[Unit] = []
+var board_ui = null
+var bench_ui = null
+var hud_ui = null
+var shop_ui = null
+var combat_controller = null
+var enemy_spawner = null
+var enemy_units: Array = []
 var current_round_data: Dictionary = {}
 var current_round_kind: String = "combat"
 var current_opponent_index: int = 0
@@ -36,10 +36,10 @@ signal game_over()
 
 
 func _ready() -> void:
-	board_ui = get_node_or_null("BoardUI") as BoardUI
-	bench_ui = get_node_or_null("BenchUI") as BenchUI
-	hud_ui = get_node_or_null("HudUI") as HudUI
-	shop_ui = get_node_or_null("ShopUI") as ShopUI
+	board_ui = get_node_or_null("BoardUI")
+	bench_ui = get_node_or_null("BenchUI")
+	hud_ui = get_node_or_null("HudUI")
+	shop_ui = get_node_or_null("ShopUI")
 
 	combat_controller = CombatController.new()
 	combat_controller.name = "CombatController"
@@ -225,14 +225,14 @@ func get_player_level() -> int:
 	return GameManager.get_player_level()
 
 
-func _get_player_units() -> Array[Unit]:
+func _get_player_units() -> Array:
 	if board_ui == null:
 		return []
 	return board_ui.get_all_placed_units()
 
 
 func _count_alive_units(units: Array) -> int:
-	return units.filter(func(unit): return unit.state != Unit.State.DEAD).size()
+	return units.filter(func(unit): return int(unit.state) != 3).size()
 
 
 func _refresh_board_state() -> void:
@@ -240,11 +240,11 @@ func _refresh_board_state() -> void:
 		hud_ui.update_synergies(_get_player_units())
 
 
-func _on_board_changed(_unit: Unit, _a, _b = null) -> void:
+func _on_board_changed(_unit, _a, _b = null) -> void:
 	_refresh_board_state()
 
 
-func _on_board_unit_sent_to_bench(_unit: Unit) -> void:
+func _on_board_unit_sent_to_bench(_unit) -> void:
 	_refresh_board_state()
 
 
@@ -335,14 +335,14 @@ func _restore_player_prep_positions() -> void:
 	_player_prep_positions.clear()
 
 
-func _position_units_for_combat(units: Array[Unit]) -> void:
+func _position_units_for_combat(units: Array) -> void:
 	if board_ui == null:
 		return
 	for unit in units:
 		unit.position = board_ui.combat_cell_to_world(unit.board_position.x, unit.board_position.y)
 
 
-func _on_combat_unit_moved(unit: Unit, to: Vector2i) -> void:
+func _on_combat_unit_moved(unit, to: Vector2i) -> void:
 	if board_ui == null or unit == null:
 		return
 	unit.position = board_ui.combat_cell_to_world(to.x, to.y)

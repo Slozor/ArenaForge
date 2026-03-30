@@ -183,7 +183,7 @@ func add_unit_from_shop(unit_id: String) -> bool:
 	var data: Dictionary = DataManager.get_unit(unit_id)
 	if data.is_empty():
 		return false
-	var unit: Unit = Unit.new()
+	var unit = Unit.new()
 	unit.init(data)
 	return add_unit(unit)
 

@@ -2,8 +2,10 @@ extends RefCounted
 
 class_name PassiveHandler
 
+const DEAD_STATE: int = 3
+
 # Called once at combat start for a unit.
-static func on_combat_start(unit: Unit, state: Dictionary) -> void:
+static func on_combat_start(unit, state: Dictionary) -> void:
 	match unit.passive:
 		"stealth_opener":
 			state["stealthed"] = true
@@ -22,7 +24,7 @@ static func on_combat_start(unit: Unit, state: Dictionary) -> void:
 
 
 # Called every delta while combat is running.
-static func on_tick(unit: Unit, state: Dictionary, delta: float, allies: Array, enemies: Array) -> void:
+static func on_tick(unit, state: Dictionary, delta: float, allies: Array, enemies: Array) -> void:
 	match unit.passive:
 		"stealth_opener":
 			if state.get("stealthed", false):
@@ -46,14 +48,14 @@ static func on_tick(unit: Unit, state: Dictionary, delta: float, allies: Array, 
 				if state["curse_timer"] <= 0.0:
 					state["curse_active"] = false
 					for entry in state.get("curse_targets", []):
-						var enemy: Unit = entry.get("unit", null)
+						var enemy = entry.get("unit", null)
 						var amount: int = entry.get("amount", 0)
-						if is_instance_valid(enemy) and enemy.state != Unit.State.DEAD:
+						if is_instance_valid(enemy) and int(enemy.state) != DEAD_STATE:
 							enemy.attack_damage = maxi(0, enemy.attack_damage + amount)
 
 
 # Called just before an attack lands. Returns final damage.
-static func on_pre_attack(attacker: Unit, defender: Unit, base_damage: int, state: Dictionary) -> int:
+static func on_pre_attack(attacker, defender, base_damage: int, state: Dictionary) -> int:
 	var damage: int = base_damage
 
 	match attacker.passive:
@@ -70,7 +72,7 @@ static func on_pre_attack(attacker: Unit, defender: Unit, base_damage: int, stat
 
 
 # Called after an attack lands.
-static func on_hit(attacker: Unit, defender: Unit, damage_dealt: int, state: Dictionary, all_enemies: Array) -> void:
+static func on_hit(attacker, defender, damage_dealt: int, state: Dictionary, all_enemies: Array) -> void:
 	match attacker.passive:
 		"armor_shred":
 			defender.armor = maxi(0, defender.armor - int(float(defender.armor) * 0.10))
@@ -86,7 +88,7 @@ static func on_hit(attacker: Unit, defender: Unit, damage_dealt: int, state: Dic
 
 
 # Called when this unit kills an enemy.
-static func on_kill(unit: Unit, killed: Unit, state: Dictionary) -> void:
+static func on_kill(unit, killed, state: Dictionary) -> void:
 	match unit.passive:
 		"soul_harvest":
 			var heal_amount: int = int(float(unit.get_max_health()) * 0.25)
@@ -94,19 +96,19 @@ static func on_kill(unit: Unit, killed: Unit, state: Dictionary) -> void:
 
 
 # Called when this unit dies.
-static func on_death(unit: Unit, state: Dictionary, nearby_enemies: Array) -> void:
+static func on_death(unit, state: Dictionary, nearby_enemies: Array) -> void:
 	match unit.passive:
 		"death_explosion":
 			var explosion_damage: int = int(float(unit.get_attack_damage()) * 0.5)
 			for enemy in nearby_enemies:
-				if enemy.state != Unit.State.DEAD:
+				if int(enemy.state) != DEAD_STATE:
 					enemy.take_damage(explosion_damage)
 		"death_curse":
 			state["curse_active"] = true
 			state["curse_timer"] = 3.0
 			state["curse_targets"] = []
 			for enemy in nearby_enemies:
-				if enemy.state != Unit.State.DEAD:
+				if int(enemy.state) != DEAD_STATE:
 					# −20% attack damage for 3 seconds
 					var amount: int = int(float(enemy.get_attack_damage()) * 0.20)
 					enemy.attack_damage = maxi(0, enemy.attack_damage - amount)
@@ -118,10 +120,10 @@ static func on_death(unit: Unit, state: Dictionary, nearby_enemies: Array) -> vo
 
 # --- Helpers ---
 
-static func _heal_adjacent_ally(healer: Unit, allies: Array) -> void:
+static func _heal_adjacent_ally(healer, allies: Array) -> void:
 	var pos: Vector2i = healer.board_position
 	for ally in allies:
-		if ally == healer or ally.state == Unit.State.DEAD:
+		if ally == healer or int(ally.state) == DEAD_STATE:
 			continue
 		var d: int = maxi(abs(ally.board_position.x - pos.x), abs(ally.board_position.y - pos.y))
 		if d <= 1:
@@ -130,10 +132,10 @@ static func _heal_adjacent_ally(healer: Unit, allies: Array) -> void:
 			break  # heal only nearest ally
 
 
-static func _pierce_line(attacker: Unit, primary_target: Unit, all_enemies: Array, damage: int) -> void:
+static func _pierce_line(attacker, primary_target, all_enemies: Array, damage: int) -> void:
 	# Hits all enemies in the same column as the primary target
 	for enemy in all_enemies:
-		if enemy == primary_target or enemy.state == Unit.State.DEAD:
+		if enemy == primary_target or int(enemy.state) == DEAD_STATE:
 			continue
 		if enemy.board_position.x == primary_target.board_position.x:
 			enemy.take_damage(int(float(damage) * 0.5))
