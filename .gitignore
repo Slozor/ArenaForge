@@ -1,0 +1,16 @@
+# Godot 4 .gitignore
+
+# Godot-specific ignores
+.godot/
+*.translation
+
+# Imported translations (automatically generated from CSV files)
+*.import
+
+# Avoid ignoring Godot icon imports by default
+!icon.svg.import
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
