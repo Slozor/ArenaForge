@@ -319,24 +319,32 @@ func _draw_board() -> void:
 
 
 func _draw() -> void:
-	var board_rect := Rect2(_board_offset - Vector2(16, 16), Vector2(COLS * _cell_size + 32, ROWS * _cell_size + 32))
-	draw_rect(board_rect, Color(0.04, 0.06, 0.09, 0.42), true)
-	draw_rect(board_rect, Color(0.42, 0.52, 0.66, 0.32), false, 2.0)
+	# Board outer frame
+	var board_rect := Rect2(_board_offset - Vector2(12, 12), Vector2(COLS * _cell_size + 24, ROWS * _cell_size + 24))
+	draw_rect(board_rect, UITheme.BG_DARK, true)
+	draw_rect(board_rect, UITheme.GOLD, false, 2.0)
 	_draw_lane_labels()
 
 	for col in COLS:
 		for row in ROWS:
 			var rect_pos: Vector2 = _board_offset + Vector2(col * _cell_size, row * _cell_size)
 			var rect := Rect2(rect_pos, Vector2(_cell_size - 2, _cell_size - 2))
-			var tint: Color = _tile_tint_for(col, row)
-			draw_texture_rect(TILE_TEXTURE, rect, false, tint)
-			draw_rect(rect, Color(0.48, 0.58, 0.72, 0.18), false, 1.5)
+			# Tile base
+			draw_rect(rect, UITheme.BOARD_TILE, true)
+			# Top highlight bevel
+			draw_rect(Rect2(rect.position, Vector2(rect.size.x, 2)), UITheme.BOARD_BORDER, true)
+			# Left highlight bevel
+			draw_rect(Rect2(rect.position, Vector2(2, rect.size.y)), UITheme.BOARD_BORDER, true)
+			# Border
+			draw_rect(rect, UITheme.BOARD_BORDER, false, 1.0)
+
+			# Selection highlights
 			if selected_unit != null and selected_from_bench and grid[col][row] == null:
-				draw_rect(rect.grow(-8), Color(0.20, 0.60, 0.32, 0.20), true)
-				draw_rect(rect.grow(-8), Color(0.32, 0.88, 0.50, 0.85), false, 2.0)
+				draw_rect(rect.grow(-6), Color(UITheme.TEAL.r, UITheme.TEAL.g, UITheme.TEAL.b, 0.18), true)
+				draw_rect(rect.grow(-6), UITheme.TEAL, false, 2.0)
 			elif selected_unit != null and not selected_from_bench and Vector2i(col, row) == selected_from_cell:
-				draw_rect(rect.grow(-8), Color(0.82, 0.62, 0.18, 0.18), true)
-				draw_rect(rect.grow(-8), Color(0.95, 0.80, 0.25, 0.95), false, 3.0)
+				draw_rect(rect.grow(-6), Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.20), true)
+				draw_rect(rect.grow(-6), UITheme.GOLD_BRIGHT, false, 2.5)
 
 
 func _highlight_valid_cells() -> void:

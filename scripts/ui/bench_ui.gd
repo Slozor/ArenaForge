@@ -12,10 +12,10 @@ const SLOT_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
 const PORTRAIT_TEXTURE: Texture2D = preload("res://assets/portraits/placeholder_unit.svg")
 const UNIT_SCRIPT_PATH: String = "res://scripts/units/unit.gd"
 const COST_COLORS: Dictionary = {
-	1: Color(0.65, 0.65, 0.65),
-	2: Color(0.15, 0.70, 0.30),
-	3: Color(0.20, 0.45, 0.90),
-	4: Color(0.60, 0.20, 0.90)
+	1: UITheme.COST_1,
+	2: UITheme.COST_2,
+	3: UITheme.COST_3,
+	4: UITheme.COST_4,
 }
 
 var _slots: Array[Control] = []
@@ -58,13 +58,13 @@ func _ready() -> void:
 
 func _build_background() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.08, 0.10, 0.13, 0.90)
+	bg.color = UITheme.BG_PANEL
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	_background_line = ColorRect.new()
-	_background_line.color = Color(0.3, 0.35, 0.45)
+	_background_line.color = UITheme.GOLD
 	_background_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_background_line)
 
@@ -74,25 +74,25 @@ func _build_header() -> void:
 	_title_label.text = "BENCH"
 	_title_label.position = Vector2(18, 6)
 	_title_label.add_theme_font_size_override("font_size", 13)
-	_title_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	_title_label.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
 	add_child(_title_label)
 
 	_count_label = Label.new()
 	_count_label.position = Vector2(96, 6)
 	_count_label.add_theme_font_size_override("font_size", 13)
-	_count_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35))
+	_count_label.add_theme_color_override("font_color", UITheme.GOLD)
 	add_child(_count_label)
 
 	_phase_label = Label.new()
 	_phase_label.position = Vector2(240, 6)
 	_phase_label.add_theme_font_size_override("font_size", 12)
-	_phase_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+	_phase_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	add_child(_phase_label)
 
 	_hint_label = Label.new()
 	_hint_label.position = Vector2(420, 6)
 	_hint_label.add_theme_font_size_override("font_size", 12)
-	_hint_label.add_theme_color_override("font_color", Color(0.65, 0.7, 0.76))
+	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	add_child(_hint_label)
 
 
@@ -114,7 +114,7 @@ func _make_slot(index: int) -> Control:
 	bg.texture = SLOT_TEXTURE
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.modulate = Color(0.66, 0.74, 0.86, 0.92)
+	bg.modulate = Color(UITheme.BOARD_TILE.r, UITheme.BOARD_TILE.g, UITheme.BOARD_TILE.b, 0.90)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	container.add_child(bg)
 
@@ -140,7 +140,7 @@ func _make_slot(index: int) -> Control:
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_lbl.add_theme_font_size_override("font_size", 10)
-	name_lbl.add_theme_color_override("font_color", Color.WHITE)
+	name_lbl.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
 	name_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	container.add_child(name_lbl)
 
@@ -148,14 +148,14 @@ func _make_slot(index: int) -> Control:
 	star_lbl.name = "StarLabel"
 	star_lbl.position = Vector2(2, 2)
 	star_lbl.add_theme_font_size_override("font_size", 12)
-	star_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.1))
+	star_lbl.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
 	container.add_child(star_lbl)
 
 	var sell_lbl := Label.new()
 	sell_lbl.name = "SellLabel"
 	sell_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sell_lbl.add_theme_font_size_override("font_size", 10)
-	sell_lbl.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+	sell_lbl.add_theme_color_override("font_color", UITheme.GREEN_HP)
 	sell_lbl.position = Vector2(0, SLOT_SIZE - 16)
 	sell_lbl.custom_minimum_size = Vector2(SLOT_SIZE, 14)
 	container.add_child(sell_lbl)
@@ -411,7 +411,7 @@ func _refresh_slot(index: int) -> void:
 	var tap_btn: Button = slot.get_node("TapArea") as Button
 
 	if unit == null:
-		bg.modulate = Color(0.66, 0.74, 0.86, 0.42)
+		bg.modulate = Color(UITheme.BOARD_TILE.r, UITheme.BOARD_TILE.g, UITheme.BOARD_TILE.b, 0.42)
 		portrait.modulate = Color(1, 1, 1, 0.0)
 		name_lbl.text = ""
 		star_lbl.text = ""
@@ -422,9 +422,9 @@ func _refresh_slot(index: int) -> void:
 		return
 
 	var cost: int = unit.cost
-	var tier_color: Color = COST_COLORS.get(cost, Color.GRAY)
-	bg.modulate = tier_color.lightened(0.2)
-	portrait.modulate = tier_color.lightened(0.05)
+	var tier_color: Color = COST_COLORS.get(cost, UITheme.BORDER_MID)
+	bg.modulate = tier_color.darkened(0.25)
+	portrait.modulate = tier_color.lightened(0.1)
 	name_lbl.text = unit.unit_name
 	star_lbl.text = "★".repeat(unit.star_level - 1) if unit.star_level > 1 else ""
 	sell_lbl.text = "%dg" % (cost * unit.star_level)
@@ -440,7 +440,7 @@ func _set_slot_selected(index: int, selected: bool) -> void:
 	if bg == null:
 		return
 	if selected:
-		bg.modulate = bg.modulate.lerp(Color(1.0, 0.9, 0.55, 1.0), 0.35)
+		bg.modulate = bg.modulate.lerp(UITheme.GOLD_BRIGHT, 0.40)
 	else:
 		_refresh_slot(index)
 

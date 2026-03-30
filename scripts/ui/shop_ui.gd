@@ -69,14 +69,13 @@ func _ready() -> void:
 
 func _build_background() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.07, 0.08, 0.11, 0.95)
+	bg.color = UITheme.BG_PANEL
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
-	# Top border line
 	_background_line = ColorRect.new()
-	_background_line.color = Color(0.3, 0.35, 0.45)
+	_background_line.color = UITheme.GOLD
 	_background_line.position = Vector2.ZERO
 	_background_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_background_line)
@@ -99,19 +98,19 @@ func _build_gold_row() -> void:
 	_gold_label = Label.new()
 	_gold_label.text = "0"
 	_gold_label.add_theme_font_size_override("font_size", 22)
-	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	_gold_label.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
 	_gold_row.add_child(_gold_label)
 
 	_interest_label = Label.new()
 	_interest_label.text = ""
 	_interest_label.add_theme_font_size_override("font_size", 14)
-	_interest_label.add_theme_color_override("font_color", Color(0.6, 0.9, 0.4))
+	_interest_label.add_theme_color_override("font_color", UITheme.GREEN_HP)
 	_gold_row.add_child(_interest_label)
 
 	_level_label = Label.new()
 	_level_label.text = "Lv. 1"
 	_level_label.add_theme_font_size_override("font_size", 14)
-	_level_label.add_theme_color_override("font_color", Color(0.7, 0.8, 1.0))
+	_level_label.add_theme_color_override("font_color", UITheme.TEAL)
 	_level_label.position = Vector2(1180, 8)
 	add_child(_level_label)
 
@@ -120,20 +119,20 @@ func _build_overview_row() -> void:
 	_team_label = Label.new()
 	_team_label.position = Vector2(900, 8)
 	_team_label.add_theme_font_size_override("font_size", 14)
-	_team_label.add_theme_color_override("font_color", Color(0.85, 0.95, 0.85))
+	_team_label.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
 	add_child(_team_label)
 
 	_bench_label = Label.new()
 	_bench_label.position = Vector2(900, 26)
 	_bench_label.add_theme_font_size_override("font_size", 12)
-	_bench_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+	_bench_label.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
 	add_child(_bench_label)
 
 	_status_label = Label.new()
 	_status_label.position = Vector2(20, 172)
 	_status_label.custom_minimum_size = Vector2(760, 20)
 	_status_label.add_theme_font_size_override("font_size", 12)
-	_status_label.add_theme_color_override("font_color", Color(0.75, 0.8, 0.9))
+	_status_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	add_child(_status_label)
 
 
@@ -148,15 +147,15 @@ func _build_cards() -> void:
 
 
 func _build_buttons() -> void:
-	_reroll_btn = _make_button("↺ Reroll\n2g", Color(0.25, 0.45, 0.65))
+	_reroll_btn = _make_button("↺  Reroll\n2 Gold", UITheme.BG_PANEL_ALT, UITheme.TEAL)
 	_reroll_btn.pressed.connect(_on_reroll)
 	add_child(_reroll_btn)
 
-	_xp_btn = _make_button("▲ Buy XP\n4g", Color(0.30, 0.55, 0.30))
+	_xp_btn = _make_button("▲  Buy XP\n4 Gold", UITheme.BG_PANEL_ALT, UITheme.GREEN_HP)
 	_xp_btn.pressed.connect(_on_buy_xp)
 	add_child(_xp_btn)
 
-	_lock_btn = _make_button("🔓 Lock", Color(0.45, 0.35, 0.20))
+	_lock_btn = _make_button("🔒  Lock", UITheme.BG_PANEL_ALT, UITheme.GOLD)
 	_lock_btn.pressed.connect(_on_toggle_lock)
 	add_child(_lock_btn)
 
@@ -226,20 +225,15 @@ func _make_unit_card():
 	return card
 
 
-func _make_button(text: String, color: Color) -> Button:
+func _make_button(text: String, bg: Color = UITheme.BG_PANEL_ALT, border: Color = UITheme.BORDER_MID) -> Button:
 	var btn := Button.new()
 	btn.text = text
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
+	var style := UITheme.button_style(bg, border, 6)
 	btn.add_theme_stylebox_override("normal", style)
-	var hover_style := style.duplicate() as StyleBoxFlat
-	hover_style.bg_color = color.lightened(0.2)
-	btn.add_theme_stylebox_override("hover", hover_style)
+	var hover := UITheme.button_style(bg.lightened(0.12), border.lightened(0.2), 6)
+	btn.add_theme_stylebox_override("hover", hover)
 	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
 	return btn
 
 
