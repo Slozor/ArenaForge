@@ -5,7 +5,7 @@ class_name BoardUI
 const COLS: int = 7
 const ROWS: int = 4
 const CELL_SIZE: float = 96.0
-const BOARD_OFFSET: Vector2 = Vector2(64.0, 120.0)  # top-left of board in landscape layout
+const BOARD_OFFSET: Vector2 = Vector2(304.0, 55.0)  # centered in 1280x720, below HUD (50px)
 
 enum InputState { IDLE, UNIT_SELECTED }
 

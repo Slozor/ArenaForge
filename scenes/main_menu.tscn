@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+color = Color(0.055, 0.065, 0.09, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200
+offset_top = 180
+offset_right = 200
+offset_bottom = 240
+text = "ARENA FORGE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Subtitle" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200
+offset_top = 250
+offset_right = 200
+offset_bottom = 280
+text = "Auto-Battler"
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120
+offset_top = 320
+offset_right = 120
+offset_bottom = 380
+text = "Start Game"

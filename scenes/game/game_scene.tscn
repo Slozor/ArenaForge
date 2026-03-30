@@ -1,0 +1,42 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud_ui.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/board_ui.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/ui/bench_ui.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/ui/shop_ui.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/game/game_loop.gd" id="5"]
+
+[node name="GameScene" type="Node2D"]
+script = ExtResource("5")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+color = Color(0.055, 0.065, 0.09, 1)
+
+[node name="BoardUI" type="Node2D" parent="."]
+script = ExtResource("2")
+
+[node name="HighlightLayer" type="Node2D" parent="BoardUI"]
+
+[node name="HudUI" type="Control" parent="."]
+script = ExtResource("1")
+layout_mode = 3
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 440
+
+[node name="BenchUI" type="Control" parent="."]
+script = ExtResource("3")
+layout_mode = 3
+anchors_preset = 0
+offset_top = 435
+offset_right = 1280
+offset_bottom = 515
+
+[node name="ShopUI" type="Control" parent="."]
+script = ExtResource("4")
+layout_mode = 3
+anchors_preset = 0
+offset_top = 515
+offset_right = 1280
+offset_bottom = 720
