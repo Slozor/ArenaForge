@@ -16,11 +16,25 @@ static func calculate_round_gold(
 	loss_streak: int,
 	human_synergy_bonus: int
 ) -> int:
-	var total: int = BASE_GOLD_PER_ROUND
-	total += _calculate_interest(current_gold)
-	total += _calculate_streak_bonus(win_streak, loss_streak)
-	total += human_synergy_bonus
-	return total
+	return calculate_round_income(current_gold, win_streak, loss_streak, human_synergy_bonus)["total"]
+
+
+static func calculate_round_income(
+	current_gold: int,
+	win_streak: int,
+	loss_streak: int,
+	human_synergy_bonus: int
+) -> Dictionary:
+	var interest: int = _calculate_interest(current_gold)
+	var streak_bonus: int = _calculate_streak_bonus(win_streak, loss_streak)
+	var total: int = BASE_GOLD_PER_ROUND + interest + streak_bonus + human_synergy_bonus
+	return {
+		"base": BASE_GOLD_PER_ROUND,
+		"interest": interest,
+		"streak_bonus": streak_bonus,
+		"trait_bonus": human_synergy_bonus,
+		"total": total,
+	}
 
 
 static func _calculate_interest(gold: int) -> int:
@@ -42,3 +56,7 @@ static func _calculate_streak_bonus(win_streak: int, loss_streak: int) -> int:
 # Returns interest amount for display (e.g. "+2" shown in HUD)
 static func get_interest_preview(gold: int) -> int:
 	return _calculate_interest(gold)
+
+
+static func get_max_interest() -> int:
+	return MAX_INTEREST

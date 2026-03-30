@@ -13,6 +13,12 @@ enum State { IDLE, MOVING, ATTACKING, DEAD }
 @export var star_level: int = 1
 
 # Base stats (set from JSON via init())
+var base_max_health: int = 0
+var base_attack_damage: int = 0
+var base_attack_speed: float = 1.0
+var base_attack_range: int = 1
+var base_armor: int = 0
+var base_move_speed: float = 2.0
 var max_health: int = 0
 var attack_damage: int = 0
 var attack_speed: float = 1.0
@@ -26,6 +32,7 @@ var item_attack_damage: int = 0
 var item_armor: int = 0
 var item_max_hp: int = 0
 var item_attack_speed: float = 0.0
+var temp_attack_speed_mod: float = 0.0
 var equipped_item: String = ""
 
 # Runtime
@@ -49,15 +56,38 @@ func init(data: Dictionary) -> void:
 	passive = data.get("passive", "")
 
 	var stats: Dictionary = data.get("stats", {})
-	max_health = stats.get("health", 500)
-	attack_damage = stats.get("attack_damage", 50)
-	attack_speed = stats.get("attack_speed", 1.0)
-	attack_range = stats.get("attack_range", 1)
-	armor = stats.get("armor", 0)
-	move_speed = stats.get("move_speed", 2.0)
+	base_max_health = stats.get("health", 500)
+	base_attack_damage = stats.get("attack_damage", 50)
+	base_attack_speed = stats.get("attack_speed", 1.0)
+	base_attack_range = stats.get("attack_range", 1)
+	base_armor = stats.get("armor", 0)
+	base_move_speed = stats.get("move_speed", 2.0)
 
-	_apply_star_scaling()
+	_recalculate_stats()
 	current_health = get_max_health()
+
+
+func reset_combat_state() -> void:
+	_recalculate_stats()
+	current_health = get_max_health()
+	state = State.IDLE
+	has_revived = false
+	target = null
+	temp_attack_speed_mod = 0.0
+	health_changed.emit(current_health, get_max_health())
+
+
+func _recalculate_stats() -> void:
+	var star_multiplier: float = 1.0
+	if star_level == 2:
+		star_multiplier = 1.8
+
+	max_health = int(float(base_max_health) * star_multiplier)
+	attack_damage = int(float(base_attack_damage) * star_multiplier)
+	attack_speed = base_attack_speed
+	attack_range = base_attack_range
+	armor = base_armor
+	move_speed = base_move_speed
 
 
 func get_max_health() -> int:
@@ -69,19 +99,27 @@ func get_attack_damage() -> int:
 
 
 func get_attack_speed() -> float:
-	return attack_speed + item_attack_speed
+	return attack_speed + item_attack_speed + temp_attack_speed_mod
 
 
 func get_armor() -> int:
 	return armor + item_armor
 
 
-func take_damage(raw_amount: int) -> void:
-	var reduced: int = _apply_armor_reduction(raw_amount)
-	current_health -= reduced
+func take_damage(raw_amount: int, ignore_armor: bool = false) -> bool:
+	if state == State.DEAD:
+		return false
+
+	var reduced: int = raw_amount
+	if not ignore_armor:
+		reduced = _apply_armor_reduction(raw_amount)
+
+	current_health -= max(0, reduced)
 	health_changed.emit(current_health, get_max_health())
 	if current_health <= 0:
 		_on_death()
+		return true
+	return false
 
 
 func heal(amount: int) -> void:
@@ -102,14 +140,9 @@ func equip_item(item_id: String, item_data: Dictionary) -> void:
 
 func upgrade_to_star(level: int) -> void:
 	star_level = level
-	_apply_star_scaling()
+	_recalculate_stats()
 	current_health = get_max_health()
-
-
-func _apply_star_scaling() -> void:
-	if star_level == 2:
-		max_health = int(max_health * 1.8)
-		attack_damage = int(attack_damage * 1.8)
+	health_changed.emit(current_health, get_max_health())
 
 
 func _apply_armor_reduction(raw: int) -> int:
@@ -118,5 +151,7 @@ func _apply_armor_reduction(raw: int) -> int:
 
 
 func _on_death() -> void:
+	if state == State.DEAD:
+		return
 	state = State.DEAD
 	died.emit(self)

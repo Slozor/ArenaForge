@@ -6,12 +6,27 @@ class_name HudUI
 const TRAIT_INACTIVE: Color = Color(0.25, 0.28, 0.32)
 const TRAIT_ACTIVE: Color = Color(0.75, 0.60, 0.15)
 const TRAIT_TEXT: Color = Color(1.0, 0.90, 0.5)
+const TRAIT_BADGE_TEXTURE: Texture2D = preload("res://assets/ui/trait_badge.svg")
+const ITEM_TEXTURE: Texture2D = preload("res://assets/items/placeholder_item.svg")
+const PREP_PHASE: int = 0
+const COMBAT_PHASE: int = 1
+const RESULT_PHASE: int = 2
 
 var _health_label: Label = null
 var _round_label: Label = null
+var _team_label: Label = null
+var _bench_label: Label = null
+var _phase_label: Label = null
+var _inventory_label: Label = null
+var _inventory_slots: Array[TextureRect] = []
 var _stage_indicators: Array[ColorRect] = []
 var _trait_entries: Dictionary = {}   # trait_id -> { "bg", "label", "count_label" }
 var _skip_btn: Button = null
+var _board_ui: BoardUI = null
+var _bench_ui: BenchUI = null
+var _shop_ui: ShopUI = null
+var _phase: int = PREP_PHASE
+var _touch_hints_enabled: bool = true
 
 signal skip_prep_pressed()
 
@@ -19,13 +34,19 @@ signal skip_prep_pressed()
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	custom_minimum_size = Vector2(1280, 50)
+	_touch_hints_enabled = bool(UISettings.load_settings().get(UISettings.KEY_TOUCH_HINTS, true))
 	_build_top_bar()
+	_build_overview()
+	_build_inventory_row()
 	_build_trait_panel()
 	_build_stage_tracker()
+	_bind_scene_peers()
+	_refresh_phase_label()
 
 	GameManager.health_changed.connect(_on_health_changed)
 	GameManager.round_changed.connect(_on_round_changed)
 	GameManager.gold_changed.connect(_on_gold_changed)
+	GameManager.inventory_changed.connect(_on_inventory_changed)
 
 
 func _build_top_bar() -> void:
@@ -82,6 +103,54 @@ func _build_top_bar() -> void:
 	add_child(_skip_btn)
 
 
+func _build_overview() -> void:
+	_team_label = Label.new()
+	_team_label.position = Vector2(980, 12)
+	_team_label.add_theme_font_size_override("font_size", 14)
+	_team_label.add_theme_color_override("font_color", Color(0.85, 0.95, 0.85))
+	add_child(_team_label)
+
+	_bench_label = Label.new()
+	_bench_label.position = Vector2(980, 30)
+	_bench_label.add_theme_font_size_override("font_size", 12)
+	_bench_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+	add_child(_bench_label)
+
+	_phase_label = Label.new()
+	_phase_label.position = Vector2(1120, 12)
+	_phase_label.custom_minimum_size = Vector2(140, 22)
+	_phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_phase_label.add_theme_font_size_override("font_size", 13)
+	_phase_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.55))
+	add_child(_phase_label)
+
+
+func _build_inventory_row() -> void:
+	_inventory_label = Label.new()
+	_inventory_label.text = "Items"
+	_inventory_label.position = Vector2(150, 12)
+	_inventory_label.add_theme_font_size_override("font_size", 13)
+	_inventory_label.add_theme_color_override("font_color", Color(0.80, 0.86, 0.95))
+	add_child(_inventory_label)
+
+	for i in 6:
+		var slot_bg := ColorRect.new()
+		slot_bg.color = Color(0.10, 0.13, 0.18, 0.95)
+		slot_bg.position = Vector2(198 + i * 32, 9)
+		slot_bg.custom_minimum_size = Vector2(26, 26)
+		add_child(slot_bg)
+
+		var slot_icon := TextureRect.new()
+		slot_icon.texture = ITEM_TEXTURE
+		slot_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		slot_icon.stretch_mode = TextureRect.STRETCH_SCALE
+		slot_icon.position = Vector2(199 + i * 32, 10)
+		slot_icon.custom_minimum_size = Vector2(24, 24)
+		slot_icon.modulate = Color(1, 1, 1, 0.0)
+		add_child(slot_icon)
+		_inventory_slots.append(slot_icon)
+
+
 func _build_stage_tracker() -> void:
 	# 12 round dots centered in the top bar
 	var dot_size: float = 14.0
@@ -133,10 +202,13 @@ func _build_trait_panel() -> void:
 		row_bg.position = Vector2(6, row_y)
 		add_child(row_bg)
 
-		var icon_bg := ColorRect.new()
-		icon_bg.color = Color(0.18, 0.20, 0.26)
+		var icon_bg := TextureRect.new()
+		icon_bg.texture = TRAIT_BADGE_TEXTURE
+		icon_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_bg.stretch_mode = TextureRect.STRETCH_SCALE
 		icon_bg.custom_minimum_size = Vector2(20, 20)
 		icon_bg.position = Vector2(8, row_y + 2)
+		icon_bg.modulate = _trait_icon_tint(trait_id)
 		add_child(icon_bg)
 
 		var lbl := Label.new()
@@ -156,7 +228,8 @@ func _build_trait_panel() -> void:
 		_trait_entries[trait_id] = {
 			"bg": row_bg,
 			"label": lbl,
-			"count": count_lbl
+			"count": count_lbl,
+			"icon": icon_bg
 		}
 		row_y += 28.0
 
@@ -171,6 +244,7 @@ func update_synergies(board_units: Array) -> void:
 		(e["label"] as Label).add_theme_color_override("font_color", Color(0.7, 0.72, 0.78))
 		(e["count"] as Label).text = "0"
 		(e["count"] as Label).add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
+		(e["icon"] as TextureRect).modulate = _trait_icon_tint(id)
 
 	# Count
 	var race_counts: Dictionary = {}
@@ -205,6 +279,7 @@ func update_synergies(board_units: Array) -> void:
 			(e["bg"] as ColorRect).color = TRAIT_ACTIVE.darkened(0.3)
 			(e["label"] as Label).add_theme_color_override("font_color", TRAIT_TEXT)
 			(e["count"] as Label).add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+			(e["icon"] as TextureRect).modulate = Color(1.0, 0.92, 0.55)
 
 
 func set_skip_button_visible(visible_state: bool) -> void:
@@ -226,10 +301,22 @@ func _on_health_changed(hp: int) -> void:
 func _on_round_changed(round_num: int) -> void:
 	_round_label.text = "Round %d / 12" % round_num
 	_update_stage_dots(round_num)
+	_refresh_overview()
 
 
 func _on_gold_changed(_gold: int) -> void:
 	pass  # Gold shown in ShopUI
+
+
+func _on_inventory_changed(items: Array[String]) -> void:
+	for i in _inventory_slots.size():
+		var icon: TextureRect = _inventory_slots[i]
+		if i < items.size():
+			icon.modulate = _item_tint(items[i])
+			icon.tooltip_text = _item_tooltip(items[i])
+		else:
+			icon.modulate = Color(1, 1, 1, 0.0)
+			icon.tooltip_text = ""
 
 
 func _update_stage_dots(current: int) -> void:
@@ -241,3 +328,144 @@ func _update_stage_dots(current: int) -> void:
 			dot.color = Color(1.0, 0.78, 0.1)    # current (yellow)
 		else:
 			dot.color = Color(0.3, 0.32, 0.38)   # future (gray)
+
+
+func _bind_scene_peers() -> void:
+	var root: Node = get_parent()
+	if root == null:
+		root = get_tree().current_scene
+	if root == null:
+		return
+
+	_board_ui = root.get_node_or_null("BoardUI") as BoardUI
+	_bench_ui = root.get_node_or_null("BenchUI") as BenchUI
+	_shop_ui = root.get_node_or_null("ShopUI") as ShopUI
+
+	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
+		root.phase_changed.connect(_on_phase_changed)
+
+	skip_prep_pressed.connect(_on_skip_prep_pressed)
+
+	if _board_ui != null:
+		_board_ui.unit_placed.connect(func(_unit, _col, _row): _refresh_overview())
+		_board_ui.unit_moved.connect(func(_unit, _from, _to): _refresh_overview())
+		_board_ui.unit_sent_to_bench.connect(func(_unit): _refresh_overview())
+
+	if _bench_ui != null:
+		_bench_ui.unit_sold.connect(func(_unit): _refresh_overview())
+		_bench_ui.unit_selected_from_bench.connect(func(_unit): _refresh_overview())
+
+	if _shop_ui != null:
+		_shop_ui.unit_bought.connect(func(_unit_id): _refresh_overview())
+
+	_refresh_overview()
+
+
+func _on_skip_prep_pressed() -> void:
+	var root: Node = get_parent()
+	if root == null:
+		root = get_tree().current_scene
+	if root != null and root.has_method("skip_prep"):
+		root.call("skip_prep")
+
+
+func _on_phase_changed(phase: int) -> void:
+	_phase = phase
+	_refresh_phase_label()
+	_refresh_overview()
+
+
+func _refresh_phase_label() -> void:
+	if _phase_label == null:
+		return
+	match _phase:
+		PREP_PHASE:
+			_phase_label.text = "Preparation"
+		COMBAT_PHASE:
+			_phase_label.text = "Combat"
+		RESULT_PHASE:
+			_phase_label.text = "Result"
+		_:
+			_phase_label.text = "Menu"
+
+
+func _refresh_overview() -> void:
+	if _team_label != null:
+		_team_label.text = "Team %d/%d" % [_get_team_count(), _get_team_capacity()]
+	if _bench_label != null:
+		_bench_label.text = "Bench %d/%d" % [_get_bench_count(), _get_bench_capacity()]
+	if _skip_btn != null:
+		_skip_btn.text = "▶ Ready" if _touch_hints_enabled else "Ready"
+	if _inventory_label != null:
+		_inventory_label.text = "Items %d/%d" % [GameManager.get_item_inventory_size(), GameManager.MAX_INVENTORY_ITEMS]
+
+
+func _get_team_count() -> int:
+	if _board_ui != null:
+		return _board_ui.get_unit_count()
+	return 0
+
+
+func _get_team_capacity() -> int:
+	if _board_ui != null:
+		return _board_ui.get_team_capacity()
+	return 5
+
+
+func _get_bench_count() -> int:
+	if _bench_ui != null:
+		return _bench_ui.get_unit_count()
+	return 0
+
+
+func _get_bench_capacity() -> int:
+	if _bench_ui != null:
+		return _bench_ui.get_capacity()
+	return 9
+
+
+func _trait_icon_tint(trait_id: String) -> Color:
+	match trait_id:
+		"human":
+			return Color(0.75, 0.90, 1.00)
+		"elf":
+			return Color(0.55, 0.95, 0.70)
+		"dwarf":
+			return Color(0.95, 0.80, 0.45)
+		"undead":
+			return Color(0.80, 0.82, 0.92)
+		"dragon":
+			return Color(1.00, 0.55, 0.35)
+		"warrior":
+			return Color(0.85, 0.55, 0.35)
+		"mage":
+			return Color(0.55, 0.70, 1.00)
+		"ranger":
+			return Color(0.75, 0.95, 0.55)
+		"guardian":
+			return Color(0.95, 0.80, 0.45)
+		"assassin":
+			return Color(0.95, 0.45, 0.65)
+		_:
+			return Color(0.8, 0.8, 0.8)
+
+
+func _item_tint(item_id: String) -> Color:
+	var item: Dictionary = DataManager.get_item(item_id)
+	var category: String = item.get("category", "")
+	match category:
+		"component":
+			return Color(0.78, 0.86, 1.0, 0.95)
+		"crafted":
+			return Color(1.0, 0.83, 0.42, 0.98)
+		"legacy":
+			return Color(0.80, 0.92, 0.78, 0.95)
+		_:
+			return Color(0.9, 0.9, 0.9, 0.95)
+
+
+func _item_tooltip(item_id: String) -> String:
+	var item: Dictionary = DataManager.get_item(item_id)
+	if item.is_empty():
+		return item_id
+	return "%s\n%s" % [item.get("name", item_id), item.get("description", "")]

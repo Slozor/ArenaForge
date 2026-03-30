@@ -47,6 +47,26 @@
       "thresholds": [
         { "count": 2, "label": "2 Dragon", "effect": "burn_on_hit", "value": 10 }
       ]
+    },
+    {
+      "id": "orc",
+      "name": "Orc",
+      "icon": "orc",
+      "description": "Orcs gain bonus max HP and become harder to break.",
+      "thresholds": [
+        { "count": 2, "label": "2 Orc", "effect": "max_hp_bonus_percent", "value": 0.20 },
+        { "count": 4, "label": "4 Orc", "effect": "max_hp_bonus_percent", "value": 0.40 }
+      ]
+    },
+    {
+      "id": "fae",
+      "name": "Fae",
+      "icon": "fae",
+      "description": "Fae gain attack speed and overwhelm slower teams.",
+      "thresholds": [
+        { "count": 2, "label": "2 Fae", "effect": "attack_speed_bonus", "value": 0.12 },
+        { "count": 4, "label": "4 Fae", "effect": "attack_speed_bonus", "value": 0.28 }
+      ]
     }
   ],
   "classes": [
@@ -95,6 +115,46 @@
       "description": "Assassins leap to the weakest enemy at battle start.",
       "thresholds": [
         { "count": 2, "label": "2 Assassin", "effect": "leap_to_weakest", "value": 1 }
+      ]
+    },
+    {
+      "id": "knight",
+      "name": "Knight",
+      "icon": "knight",
+      "description": "Knights gain bonus armor.",
+      "thresholds": [
+        { "count": 2, "label": "2 Knight", "effect": "armor_bonus_percent", "value": 0.20 },
+        { "count": 4, "label": "4 Knight", "effect": "armor_bonus_percent", "value": 0.45 }
+      ]
+    },
+    {
+      "id": "sorcerer",
+      "name": "Sorcerer",
+      "icon": "sorcerer",
+      "description": "Sorcerers deal bonus damage.",
+      "thresholds": [
+        { "count": 2, "label": "2 Sorcerer", "effect": "damage_bonus_percent", "value": 0.18 },
+        { "count": 4, "label": "4 Sorcerer", "effect": "damage_bonus_percent", "value": 0.40 }
+      ]
+    },
+    {
+      "id": "vanguard",
+      "name": "Vanguard",
+      "icon": "vanguard",
+      "description": "Vanguards gain bonus armor and hold the line.",
+      "thresholds": [
+        { "count": 2, "label": "2 Vanguard", "effect": "armor_bonus_percent", "value": 0.20 },
+        { "count": 4, "label": "4 Vanguard", "effect": "armor_bonus_percent", "value": 0.45 }
+      ]
+    },
+    {
+      "id": "duelist",
+      "name": "Duelist",
+      "icon": "duelist",
+      "description": "Duelists gain attack speed and snowball fast fights.",
+      "thresholds": [
+        { "count": 2, "label": "2 Duelist", "effect": "attack_speed_bonus", "value": 0.12 },
+        { "count": 4, "label": "4 Duelist", "effect": "attack_speed_bonus", "value": 0.30 }
       ]
     }
   ]

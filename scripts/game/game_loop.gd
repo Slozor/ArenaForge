@@ -12,13 +12,19 @@ var current_phase: Phase = Phase.PREPARATION
 var prep_timer: float = 0.0
 var combat_timer: float = 0.0
 
-# Streak tracking
 var win_streak: int = 0
 var loss_streak: int = 0
 
-# References set by game_scene
-var board: Board = null
-var shop_ui: Node = null
+var board_ui: BoardUI = null
+var bench_ui: BenchUI = null
+var hud_ui: HudUI = null
+var shop_ui: ShopUI = null
+var combat_controller: CombatController = null
+var enemy_spawner: EnemySpawner = null
+var enemy_units: Array[Unit] = []
+var current_round_data: Dictionary = {}
+var current_round_kind: String = "combat"
+var current_opponent_index: int = 0
 
 signal phase_changed(phase: Phase)
 signal prep_timer_updated(seconds_left: float)
@@ -26,8 +32,38 @@ signal combat_finished(player_won: bool)
 signal game_over()
 
 
-func start_round() -> void:
-	_grant_round_income()
+func _ready() -> void:
+	board_ui = get_node_or_null("BoardUI") as BoardUI
+	bench_ui = get_node_or_null("BenchUI") as BenchUI
+	hud_ui = get_node_or_null("HudUI") as HudUI
+	shop_ui = get_node_or_null("ShopUI") as ShopUI
+
+	combat_controller = CombatController.new()
+	combat_controller.name = "CombatController"
+	add_child(combat_controller)
+	combat_controller.combat_ended.connect(on_combat_ended)
+
+	enemy_spawner = EnemySpawner.new()
+	enemy_spawner.name = "EnemySpawner"
+	add_child(enemy_spawner)
+
+	if board_ui != null:
+		board_ui.unit_placed.connect(_on_board_changed)
+		board_ui.unit_moved.connect(_on_board_changed)
+		board_ui.unit_sent_to_bench.connect(_on_board_unit_sent_to_bench)
+		board_ui.set_team_capacity(GameManager.get_team_size_cap())
+
+	GameManager.level_changed.connect(_on_level_changed)
+
+	GameManager.start_new_game()
+	_refresh_board_state()
+	start_round(false)
+
+
+func start_round(grant_income: bool = true) -> void:
+	if grant_income:
+		_grant_round_income()
+	_sync_round_context()
 	ShopManager.refresh_shop()
 	_enter_preparation()
 
@@ -39,10 +75,15 @@ func _enter_preparation() -> void:
 
 
 func _enter_combat() -> void:
+	if current_round_kind != "combat":
+		_resolve_special_round()
+		return
 	current_phase = Phase.COMBAT
 	combat_timer = COMBAT_TIMEOUT
 	phase_changed.emit(Phase.COMBAT)
 	_apply_synergies_to_board()
+	_spawn_enemy_team()
+	combat_controller.start(_get_player_units(), enemy_units)
 
 
 func _process(delta: float) -> void:
@@ -60,7 +101,10 @@ func _process(delta: float) -> void:
 
 func skip_prep() -> void:
 	if current_phase == Phase.PREPARATION:
-		prep_timer = 0.0
+		if current_round_kind == "combat":
+			_enter_combat()
+		else:
+			_resolve_special_round()
 
 
 func on_combat_ended(player_won: bool) -> void:
@@ -79,13 +123,14 @@ func on_combat_ended(player_won: bool) -> void:
 		GameManager.take_damage(damage)
 
 	combat_finished.emit(player_won)
+	_grant_round_reward()
 
 	if GameManager.player_health <= 0:
-		game_over.emit()
+		_finish_run("eliminated")
 		return
 
 	if GameManager.current_round >= TOTAL_ROUNDS:
-		game_over.emit()
+		_finish_run("victory")
 		return
 
 	GameManager.next_round()
@@ -93,31 +138,56 @@ func on_combat_ended(player_won: bool) -> void:
 
 
 func _resolve_combat_timeout() -> void:
-	# Sudden death: whoever has fewer surviving units loses
-	var player_count: int = board.player_units.size()
-	var enemy_count: int = board.enemy_units.size()
+	var player_count: int = _count_alive_units(_get_player_units())
+	var enemy_count: int = _count_alive_units(enemy_units)
 	on_combat_ended(player_count >= enemy_count)
 
 
 func _apply_synergies_to_board() -> void:
-	var active := TraitSystem.get_active_synergies(board.player_units)
-	TraitSystem.apply_synergies(board.player_units, active)
+	var player_units: Array = _get_player_units()
+	var active := TraitSystem.get_active_synergies(player_units)
+	TraitSystem.apply_synergies(player_units, active)
 
 
 func _grant_round_income() -> void:
 	var human_bonus: int = _get_human_synergy_bonus()
-	var earned: int = Economy.calculate_round_gold(
+	var income: Dictionary = Economy.calculate_round_income(
 		GameManager.player_gold,
 		win_streak,
 		loss_streak,
 		human_bonus
 	)
-	GameManager.add_gold(earned)
+	GameManager.add_gold(income.get("total", 0))
+
+
+func _resolve_special_round() -> void:
+	current_phase = Phase.RESULT
+	phase_changed.emit(Phase.RESULT)
+	_grant_round_reward()
+	combat_finished.emit(true)
+	_advance_round_or_finish("special")
+
+
+func _grant_round_reward() -> void:
+	if current_round_data.is_empty():
+		return
+	var reward: Dictionary = current_round_data.get("reward", {})
+	var gold_reward: int = reward.get("gold", 0)
+	if gold_reward > 0:
+		GameManager.add_gold(gold_reward)
+
+	var item_ids: Array = reward.get("items", [])
+	if item_ids.is_empty():
+		var item_count: int = reward.get("item_count", 0)
+		var item_category: String = reward.get("item_category", "")
+		if item_count > 0:
+			item_ids = DataManager.get_random_items(item_count, item_category)
+	GameManager.grant_item_rewards(item_ids, _get_player_units())
 
 
 func _get_human_synergy_bonus() -> int:
 	var human_count: int = 0
-	for unit in board.player_units:
+	for unit in _get_player_units():
 		if unit.race == "human":
 			human_count += 1
 	if human_count >= 3:
@@ -128,5 +198,81 @@ func _get_human_synergy_bonus() -> int:
 
 
 func _calculate_loss_damage() -> int:
-	# Base damage + 1 per surviving enemy unit
-	return 2 + board.enemy_units.size()
+	return 2 + _count_alive_units(enemy_units)
+
+
+func get_player_level() -> int:
+	return GameManager.get_player_level()
+
+
+func _get_player_units() -> Array[Unit]:
+	if board_ui == null:
+		return []
+	return board_ui.get_all_placed_units()
+
+
+func _count_alive_units(units: Array) -> int:
+	return units.filter(func(unit): return unit.state != Unit.State.DEAD).size()
+
+
+func _refresh_board_state() -> void:
+	if hud_ui != null:
+		hud_ui.update_synergies(_get_player_units())
+
+
+func _on_board_changed(_unit: Unit, _a, _b = null) -> void:
+	_refresh_board_state()
+
+
+func _on_board_unit_sent_to_bench(_unit: Unit) -> void:
+	_refresh_board_state()
+
+
+func _on_level_changed(new_level: int) -> void:
+	if board_ui != null:
+		board_ui.set_team_capacity(GameManager.get_team_size_cap(new_level))
+	_refresh_board_state()
+
+
+func _spawn_enemy_team() -> void:
+	_clear_enemy_units()
+	enemy_units = enemy_spawner.spawn_enemy_team(GameManager.current_round, current_opponent_index)
+
+
+func _clear_enemy_units() -> void:
+	for unit in enemy_units:
+		if is_instance_valid(unit):
+			unit.queue_free()
+	enemy_units.clear()
+
+
+func _sync_round_context() -> void:
+	current_round_data = enemy_spawner.get_round_data(GameManager.current_round)
+	current_round_kind = enemy_spawner.get_round_type(GameManager.current_round)
+	current_opponent_index = _get_opponent_index(current_round_data)
+	GameManager.set_round_kind(current_round_kind)
+
+
+func _get_opponent_index(round_data: Dictionary) -> int:
+	var opponents: Array = round_data.get("opponents", [])
+	if opponents.is_empty():
+		return 0
+	return (GameManager.current_round - 1) % opponents.size()
+
+
+func _advance_round_or_finish(reason: String) -> void:
+	if GameManager.player_health <= 0:
+		_finish_run(reason)
+		return
+	if GameManager.current_round >= TOTAL_ROUNDS:
+		_finish_run(reason)
+		return
+	GameManager.next_round()
+	start_round()
+
+
+func _finish_run(reason: String) -> void:
+	var placement: int = maxi(1, TOTAL_ROUNDS - GameManager.current_round + 1)
+	GameManager.register_run_result(placement, reason)
+	GameManager.change_state(GameManager.GameState.GAME_OVER)
+	game_over.emit()

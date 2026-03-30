@@ -1,0 +1,73 @@
+{
+  "project": "ArenaForge",
+  "art_direction": {
+    "keywords": [
+      "clean",
+      "readable",
+      "tactical",
+      "high-contrast",
+      "mobile-friendly"
+    ],
+    "rules": [
+      "Prefer flat vector shapes and SVGs.",
+      "Use tintable assets so one file can cover many variants.",
+      "Keep icons legible at small sizes.",
+      "Avoid storing license-unclear art in the main pipeline."
+    ]
+  },
+  "source_policy": {
+    "primary": "CC0 only",
+    "secondary": "CC-BY only if attribution is tracked in this manifest",
+    "avoid": [
+      "license-unclear packs",
+      "heavy 3D assets",
+      "large sprite sheets that are hard to retarget"
+    ]
+  },
+  "pipeline_priority": [
+    {
+      "id": "game_background",
+      "replacement_priority": "high",
+      "file": "ui/arena_background.svg"
+    },
+    {
+      "id": "unit_portraits",
+      "replacement_priority": "high",
+      "file": "portraits/placeholder_unit.svg"
+    },
+    {
+      "id": "trait_icons",
+      "replacement_priority": "high",
+      "file": "ui/trait_badge.svg"
+    },
+    {
+      "id": "item_icons",
+      "replacement_priority": "medium",
+      "file": "items/placeholder_item.svg"
+    },
+    {
+      "id": "board_tiles",
+      "replacement_priority": "medium",
+      "file": "ui/board_tile.svg"
+    }
+  ],
+  "candidate_sources": [
+    {
+      "name": "Kenney",
+      "license": "CC0",
+      "use_for": [
+        "UI panels",
+        "icons",
+        "generic 2D placeholders"
+      ]
+    },
+    {
+      "name": "OpenGameArt CC0 subset",
+      "license": "CC0 only",
+      "use_for": [
+        "specific replacement art",
+        "background details"
+      ]
+    }
+  ]
+}

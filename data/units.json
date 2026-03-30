@@ -191,6 +191,294 @@
         "move_speed": 1.8
       },
       "passive": "dragon_aura"
+    },
+    {
+      "id": "watchman",
+      "name": "Watchman",
+      "race": "human",
+      "trait": "knight",
+      "cost": 1,
+      "stats": {
+        "health": 540,
+        "attack_damage": 45,
+        "attack_speed": 0.85,
+        "attack_range": 1,
+        "armor": 35,
+        "move_speed": 2.0
+      },
+      "passive": "last_stand"
+    },
+    {
+      "id": "storm_adept",
+      "name": "Storm Adept",
+      "race": "elf",
+      "trait": "sorcerer",
+      "cost": 2,
+      "stats": {
+        "health": 520,
+        "attack_damage": 92,
+        "attack_speed": 0.95,
+        "attack_range": 3,
+        "armor": 12,
+        "move_speed": 2.2
+      },
+      "passive": "first_strike"
+    },
+    {
+      "id": "stone_bulwark",
+      "name": "Stone Bulwark",
+      "race": "dwarf",
+      "trait": "knight",
+      "cost": 2,
+      "stats": {
+        "health": 800,
+        "attack_damage": 68,
+        "attack_speed": 0.7,
+        "attack_range": 1,
+        "armor": 55,
+        "move_speed": 1.5
+      },
+      "passive": "shield_wall"
+    },
+    {
+      "id": "grave_archer",
+      "name": "Grave Archer",
+      "race": "undead",
+      "trait": "ranger",
+      "cost": 2,
+      "stats": {
+        "health": 520,
+        "attack_damage": 72,
+        "attack_speed": 1.05,
+        "attack_range": 3,
+        "armor": 12,
+        "move_speed": 2.4
+      },
+      "passive": "pierce_shot"
+    },
+    {
+      "id": "silver_paladin",
+      "name": "Silver Paladin",
+      "race": "human",
+      "trait": "guardian",
+      "cost": 4,
+      "stats": {
+        "health": 1350,
+        "attack_damage": 105,
+        "attack_speed": 0.68,
+        "attack_range": 1,
+        "armor": 60,
+        "move_speed": 1.7
+      },
+      "passive": "healing_aura"
+    },
+    {
+      "id": "ember_witch",
+      "name": "Ember Witch",
+      "race": "dragon",
+      "trait": "sorcerer",
+      "cost": 4,
+      "stats": {
+        "health": 1120,
+        "attack_damage": 128,
+        "attack_speed": 0.78,
+        "attack_range": 3,
+        "armor": 28,
+        "move_speed": 2.0
+      },
+      "passive": "dragon_aura"
+    },
+    {
+      "id": "crag_chief",
+      "name": "Crag Chief",
+      "race": "orc",
+      "trait": "vanguard",
+      "cost": 1,
+      "stats": {
+        "health": 600,
+        "attack_damage": 50,
+        "attack_speed": 0.70,
+        "attack_range": 1,
+        "armor": 35,
+        "move_speed": 1.8
+      },
+      "passive": "shield_wall"
+    },
+    {
+      "id": "ember_raider",
+      "name": "Ember Raider",
+      "race": "orc",
+      "trait": "duelist",
+      "cost": 2,
+      "stats": {
+        "health": 700,
+        "attack_damage": 82,
+        "attack_speed": 1.15,
+        "attack_range": 1,
+        "armor": 16,
+        "move_speed": 2.6
+      },
+      "passive": "first_strike"
+    },
+    {
+      "id": "forge_shaman",
+      "name": "Forge Shaman",
+      "race": "orc",
+      "trait": "sorcerer",
+      "cost": 2,
+      "stats": {
+        "health": 560,
+        "attack_damage": 88,
+        "attack_speed": 0.90,
+        "attack_range": 3,
+        "armor": 14,
+        "move_speed": 2.1
+      },
+      "passive": "armor_shred"
+    },
+    {
+      "id": "siegebreaker",
+      "name": "Siegebreaker",
+      "race": "orc",
+      "trait": "vanguard",
+      "cost": 3,
+      "stats": {
+        "health": 980,
+        "attack_damage": 78,
+        "attack_speed": 0.72,
+        "attack_range": 1,
+        "armor": 55,
+        "move_speed": 1.6
+      },
+      "passive": "shield_wall"
+    },
+    {
+      "id": "ash_duelist",
+      "name": "Ash Duelist",
+      "race": "orc",
+      "trait": "duelist",
+      "cost": 4,
+      "stats": {
+        "health": 1180,
+        "attack_damage": 124,
+        "attack_speed": 1.05,
+        "attack_range": 1,
+        "armor": 32,
+        "move_speed": 2.5
+      },
+      "passive": "stealth_opener"
+    },
+    {
+      "id": "glade_sage",
+      "name": "Glade Sage",
+      "race": "fae",
+      "trait": "mage",
+      "cost": 1,
+      "stats": {
+        "health": 430,
+        "attack_damage": 72,
+        "attack_speed": 1.05,
+        "attack_range": 3,
+        "armor": 10,
+        "move_speed": 2.4
+      },
+      "passive": "healing_aura"
+    },
+    {
+      "id": "lumen_ranger",
+      "name": "Lumen Ranger",
+      "race": "fae",
+      "trait": "ranger",
+      "cost": 2,
+      "stats": {
+        "health": 530,
+        "attack_damage": 78,
+        "attack_speed": 1.10,
+        "attack_range": 4,
+        "armor": 12,
+        "move_speed": 2.5
+      },
+      "passive": "pierce_shot"
+    },
+    {
+      "id": "mirth_blade",
+      "name": "Mirth Blade",
+      "race": "fae",
+      "trait": "duelist",
+      "cost": 2,
+      "stats": {
+        "health": 620,
+        "attack_damage": 84,
+        "attack_speed": 1.20,
+        "attack_range": 1,
+        "armor": 12,
+        "move_speed": 3.0
+      },
+      "passive": "first_strike"
+    },
+    {
+      "id": "thornwarden",
+      "name": "Thornwarden",
+      "race": "fae",
+      "trait": "vanguard",
+      "cost": 3,
+      "stats": {
+        "health": 940,
+        "attack_damage": 74,
+        "attack_speed": 0.78,
+        "attack_range": 1,
+        "armor": 42,
+        "move_speed": 1.8
+      },
+      "passive": "shield_wall"
+    },
+    {
+      "id": "moonweaver",
+      "name": "Moonweaver",
+      "race": "fae",
+      "trait": "sorcerer",
+      "cost": 4,
+      "stats": {
+        "health": 1020,
+        "attack_damage": 126,
+        "attack_speed": 0.82,
+        "attack_range": 3,
+        "armor": 22,
+        "move_speed": 2.0
+      },
+      "passive": "armor_shred"
+    },
+    {
+      "id": "oak_sentinel",
+      "name": "Oak Sentinel",
+      "race": "orc",
+      "trait": "vanguard",
+      "cost": 2,
+      "stats": {
+        "health": 820,
+        "attack_damage": 66,
+        "attack_speed": 0.72,
+        "attack_range": 1,
+        "armor": 48,
+        "move_speed": 1.7
+      },
+      "passive": "last_stand"
+    },
+    {
+      "id": "spellblade",
+      "name": "Spellblade",
+      "race": "fae",
+      "trait": "duelist",
+      "cost": 3,
+      "stats": {
+        "health": 760,
+        "attack_damage": 100,
+        "attack_speed": 1.18,
+        "attack_range": 1,
+        "armor": 18,
+        "move_speed": 2.8
+      },
+      "passive": "first_strike"
     }
   ]
 }

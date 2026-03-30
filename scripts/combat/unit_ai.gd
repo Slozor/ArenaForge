@@ -9,6 +9,9 @@ const COMBAT_ROWS: int = 8
 # Find the best target for a unit from the enemy list.
 # Priority: closest unit. Tiebreak: prefer non-assassins (tanks first).
 static func find_target(unit: Unit, enemies: Array) -> Unit:
+	if unit.trait == "assassin":
+		return find_assassin_target(unit, enemies)
+
 	var best_target: Unit = null
 	var best_score: float = INF
 
@@ -39,18 +42,26 @@ static func find_weakest_enemy(enemies: Array) -> Unit:
 	return weakest
 
 
-# Find the farthest enemy from the front — used by assassins to reach backline.
-static func find_backline_target(unit: Unit, enemies: Array) -> Unit:
+# Find the assassin target: weakest enemy, with a backline-friendly tiebreak.
+static func find_assassin_target(unit: Unit, enemies: Array) -> Unit:
 	var best: Unit = null
-	var max_dist: float = -1.0
+	var lowest_hp: int = INF
+	var farthest_dist: float = -1.0
 	for enemy in enemies:
 		if enemy.state == Unit.State.DEAD:
 			continue
+		var hp: int = enemy.current_health
 		var dist: float = _combat_distance(unit.board_position, enemy.board_position)
-		if dist > max_dist:
-			max_dist = dist
+		if hp < lowest_hp or (hp == lowest_hp and dist > farthest_dist):
+			lowest_hp = hp
+			farthest_dist = dist
 			best = enemy
 	return best
+
+
+# Keep the old helper for callers that still expect a backline-ish pick.
+static func find_backline_target(unit: Unit, enemies: Array) -> Unit:
+	return find_assassin_target(unit, enemies)
 
 
 # Returns true if the unit is within attack range of the target.

@@ -12,29 +12,22 @@ const ENEMY_ROWS: Array = [7, 6, 5, 4]
 const UNIT_SCENE_PATH: String = "res://scenes/units/unit.tscn"
 
 var _unit_scene: PackedScene = null
-var _rounds_data: Array = []
 
 
 func _ready() -> void:
 	_unit_scene = load(UNIT_SCENE_PATH)
-	_load_rounds()
-
-
-func _load_rounds() -> void:
-	var raw: Dictionary = _read_json("res://data/rounds.json")
-	_rounds_data = raw.get("rounds", [])
 
 
 # Returns an Array[Unit] with all enemy units placed on the enemy side of the
 # board (rows 4-7, back rows first). Board positions use the full 7x8 coordinate
 # space where row 0 is the player's front row and row 7 is the enemy's back row.
-func spawn_enemy_team(round_num: int) -> Array[Unit]:
-	var round_entry: Dictionary = _get_round_entry(round_num)
+func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array[Unit]:
+	var round_entry: Dictionary = get_round_data(round_num)
 	if round_entry.is_empty():
 		push_error("EnemySpawner: no data for round %d" % round_num)
 		return []
 
-	var unit_ids: Array = round_entry.get("units", [])
+	var unit_ids: Array = _resolve_unit_ids(round_entry, opponent_index)
 	var positions: Array[Vector2i] = _build_positions(unit_ids.size())
 	var spawned: Array[Unit] = []
 
@@ -54,6 +47,26 @@ func spawn_enemy_team(round_num: int) -> Array[Unit]:
 		spawned.append(unit)
 
 	return spawned
+
+
+func get_round_data(round_num: int) -> Dictionary:
+	return DataManager.get_round(round_num)
+
+
+func get_round_type(round_num: int) -> String:
+	return get_round_data(round_num).get("type", "combat")
+
+
+func get_round_reward(round_num: int) -> Dictionary:
+	return get_round_data(round_num).get("reward", {})
+
+
+func get_opponent_count(round_num: int) -> int:
+	var round_entry: Dictionary = get_round_data(round_num)
+	var opponents: Array = round_entry.get("opponents", [])
+	if opponents.is_empty():
+		return 1
+	return opponents.size()
 
 
 # ── Position layout ───────────────────────────────────────────────────────────
@@ -113,24 +126,16 @@ func _instantiate_unit(unit_data: Dictionary) -> Unit:
 
 # ── Round lookup ──────────────────────────────────────────────────────────────
 
-func _get_round_entry(round_num: int) -> Dictionary:
-	for entry in _rounds_data:
-		if entry.get("round", -1) == round_num:
-			return entry
-	return {}
-
-
-# ── JSON helper ───────────────────────────────────────────────────────────────
-
-func _read_json(path: String) -> Dictionary:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		push_error("EnemySpawner: could not open %s" % path)
-		return {}
-	var text: String = file.get_as_text()
-	file.close()
-	var result: Variant = JSON.parse_string(text)
-	if result == null:
-		push_error("EnemySpawner: failed to parse %s" % path)
-		return {}
-	return result
+func _resolve_unit_ids(round_entry: Dictionary, opponent_index: int) -> Array:
+	var opponents: Array = round_entry.get("opponents", [])
+	if not opponents.is_empty():
+		var index: int = clampi(opponent_index, 0, opponents.size() - 1)
+		var opponent: Variant = opponents[index]
+		if opponent is Dictionary:
+			return opponent.get("units", [])
+		if opponent is Array:
+			return opponent
+	var unit_ids: Array = round_entry.get("units", [])
+	if unit_ids.is_empty():
+		unit_ids = round_entry.get("enemy_units", [])
+	return unit_ids

@@ -18,6 +18,8 @@ const COST_GOLD_COLOR: Dictionary = {
 
 const CARD_W: float = 148.0
 const CARD_H: float = 160.0
+const CARD_FRAME_TEXTURE: Texture2D = preload("res://assets/ui/card_frame.svg")
+const UNIT_PORTRAIT_TEXTURE: Texture2D = preload("res://assets/portraits/placeholder_unit.svg")
 
 var unit_id: String = ""
 var unit_data: Dictionary = {}
@@ -26,7 +28,7 @@ var is_empty: bool = true
 
 signal card_tapped(unit_id: String)
 
-@onready var _portrait_rect: ColorRect = $Portrait
+@onready var _portrait_rect: TextureRect = $Portrait
 @onready var _name_label: Label = $NameLabel
 @onready var _cost_label: Label = $CostLabel
 @onready var _trait_label: Label = $TraitLabel
@@ -36,6 +38,7 @@ signal card_tapped(unit_id: String)
 
 
 func _ready() -> void:
+	_ensure_frame()
 	_tap_area.pressed.connect(_on_tapped)
 	custom_minimum_size = Vector2(CARD_W, CARD_H)
 	_show_empty()
@@ -70,7 +73,8 @@ func _refresh_display() -> void:
 	var tier_color: Color = COST_COLORS.get(cost, Color.WHITE)
 	var gold_color: Color = COST_GOLD_COLOR.get(cost, Color.WHITE)
 
-	_portrait_rect.color = tier_color.darkened(0.3)
+	_portrait_rect.texture = UNIT_PORTRAIT_TEXTURE
+	_portrait_rect.modulate = tier_color
 	_name_label.text = unit_data.get("name", "?")
 	_name_label.add_theme_color_override("font_color", Color.WHITE)
 
@@ -88,7 +92,8 @@ func _refresh_display() -> void:
 
 
 func _show_empty() -> void:
-	_portrait_rect.color = Color(0.12, 0.14, 0.18)
+	_portrait_rect.texture = UNIT_PORTRAIT_TEXTURE
+	_portrait_rect.modulate = Color(0.12, 0.14, 0.18)
 	_name_label.text = ""
 	_cost_label.text = ""
 	_race_label.text = ""
@@ -120,3 +125,17 @@ func _draw() -> void:
 	# Border — thicker + colored by cost tier
 	draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)),
 		border_col, false, 2.5)
+
+
+func _ensure_frame() -> void:
+	if get_node_or_null("Frame") != null:
+		return
+	var frame := TextureRect.new()
+	frame.name = "Frame"
+	frame.texture = CARD_FRAME_TEXTURE
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(frame)
+	move_child(frame, 0)

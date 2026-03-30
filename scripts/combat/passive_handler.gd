@@ -14,9 +14,11 @@ static func on_combat_start(unit: Unit, state: Dictionary) -> void:
 			state["attack_count"] = 0
 		"armor_to_power":
 			# Convert 30% of armor into bonus attack damage
-			unit.item_attack_damage += int(float(unit.get_armor()) * 0.3)
+			unit.attack_damage += int(float(unit.get_armor()) * 0.3)
 		"dragon_aura":
 			pass  # Applied to allies via trait system
+		"healing_aura":
+			state["aura_timer"] = 1.0
 
 
 # Called every delta while combat is running.
@@ -43,9 +45,11 @@ static func on_tick(unit: Unit, state: Dictionary, delta: float, allies: Array, 
 				state["curse_timer"] -= delta
 				if state["curse_timer"] <= 0.0:
 					state["curse_active"] = false
-					for enemy in state.get("cursed_enemies", []):
+					for entry in state.get("curse_targets", []):
+						var enemy: Unit = entry.get("unit", null)
+						var amount: int = entry.get("amount", 0)
 						if is_instance_valid(enemy) and enemy.state != Unit.State.DEAD:
-							enemy.item_attack_damage = maxi(0, enemy.item_attack_damage + int(enemy.get_attack_damage() * 0.20))
+							enemy.attack_damage = maxi(0, enemy.attack_damage + amount)
 
 
 # Called just before an attack lands. Returns final damage.
@@ -100,11 +104,16 @@ static func on_death(unit: Unit, state: Dictionary, nearby_enemies: Array) -> vo
 		"death_curse":
 			state["curse_active"] = true
 			state["curse_timer"] = 3.0
-			state["cursed_enemies"] = nearby_enemies.duplicate()
+			state["curse_targets"] = []
 			for enemy in nearby_enemies:
 				if enemy.state != Unit.State.DEAD:
 					# −20% attack damage for 3 seconds
-					enemy.item_attack_damage -= int(float(enemy.get_attack_damage()) * 0.20)
+					var amount: int = int(float(enemy.get_attack_damage()) * 0.20)
+					enemy.attack_damage = maxi(0, enemy.attack_damage - amount)
+					state["curse_targets"].append({
+						"unit": enemy,
+						"amount": amount
+					})
 
 
 # --- Helpers ---

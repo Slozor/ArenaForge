@@ -2,51 +2,98 @@
   "rounds": [
     {
       "round": 1,
-      "units": ["iron_guard", "bone_walker"]
+      "type": "combat",
+      "opponents": [
+        { "id": "frontline_open", "units": ["iron_guard", "bone_walker"] },
+        { "id": "greedy_open", "units": ["watchman", "bone_walker"] }
+      ],
+      "units": ["iron_guard", "bone_walker"],
+      "reward": {}
     },
     {
       "round": 2,
-      "units": ["iron_guard", "bone_walker", "elven_archer"]
+      "type": "combat",
+      "units": ["iron_guard", "bone_walker", "elven_archer"],
+      "reward": {}
     },
     {
       "round": 3,
-      "units": ["bone_walker", "elven_archer", "iron_guard"]
+      "type": "combat",
+      "units": ["bone_walker", "elven_archer", "iron_guard"],
+      "reward": {}
     },
     {
       "round": 4,
-      "units": ["iron_guard", "elven_archer", "bone_walker", "iron_guard"]
+      "type": "neutral",
+      "units": [],
+      "reward": {
+        "gold": 4,
+        "item_count": 1,
+        "item_category": "component"
+      }
     },
     {
       "round": 5,
-      "units": ["bone_walker", "bone_walker", "iron_guard", "stone_breaker"]
+      "type": "combat",
+      "units": ["bone_walker", "bone_walker", "iron_guard", "stone_breaker"],
+      "reward": {}
     },
     {
       "round": 6,
-      "units": ["elven_archer", "elven_mage", "iron_guard", "scout"]
+      "type": "combat",
+      "opponents": [
+        { "id": "ranged_pressure", "units": ["glade_sage", "lumen_ranger", "scout"] },
+        { "id": "frontline_pressure", "units": ["crag_chief", "oak_sentinel", "grave_archer"] }
+      ],
+      "units": ["crag_chief", "lumen_ranger", "forge_shaman", "ember_raider"],
+      "reward": {}
     },
     {
       "round": 7,
-      "units": ["bone_walker", "bone_walker", "soul_reaper", "iron_guard", "stone_breaker"]
+      "type": "combat",
+      "units": ["siegebreaker", "mirth_blade", "thornwarden", "bone_walker", "iron_guard"],
+      "reward": {}
     },
     {
       "round": 8,
-      "units": ["elven_archer", "elven_mage", "scout", "shadowblade", "iron_guard"]
+      "type": "draft",
+      "units": [],
+      "reward": {
+        "gold": 2,
+        "items": ["storm_bow"]
+      }
     },
     {
       "round": 9,
-      "units": ["bone_walker", "bone_walker", "soul_reaper", "stone_breaker", "runesmith", "flameling"]
+      "type": "combat",
+      "units": ["siegebreaker", "thornwarden", "moonweaver", "ash_duelist", "lumen_ranger", "runesmith"],
+      "reward": {}
     },
     {
       "round": 10,
-      "units": ["elven_archer", "elven_mage", "shadowblade", "scout", "paladin", "stone_breaker"]
+      "type": "combat",
+      "opponents": [
+        { "id": "pressure_sweep", "units": ["ash_duelist", "mirth_blade", "thornwarden", "scout", "paladin", "stone_breaker"] },
+        { "id": "frontline_cast", "units": ["silver_paladin", "moonweaver", "storm_adept", "oak_sentinel"] }
+      ],
+      "units": ["ash_duelist", "mirth_blade", "thornwarden", "scout", "silver_paladin", "storm_adept"],
+      "reward": {}
     },
     {
       "round": 11,
-      "units": ["bone_walker", "bone_walker", "soul_reaper", "flameling", "flameling", "dragon_knight"]
+      "type": "combat",
+      "units": ["crag_chief", "ember_raider", "forge_shaman", "mirth_blade", "moonweaver", "dragon_knight"],
+      "reward": {}
     },
     {
       "round": 12,
-      "units": ["stone_breaker", "runesmith", "bone_walker", "soul_reaper", "flameling", "dragon_knight", "shadowblade"]
+      "type": "combat",
+      "units": ["crag_chief", "siegebreaker", "thornwarden", "ash_duelist", "moonweaver", "spellblade", "ember_witch"],
+      "reward": {
+        "gold": 8,
+        "item_count": 1,
+        "item_category": "crafted"
+      }
     }
   ]
 }
