@@ -77,9 +77,9 @@ func _refresh_display() -> void:
 	_cost_label.text = str(cost)
 	_cost_label.add_theme_color_override("font_color", label_col)
 
-	var race: String  = unit_data.get("race",  "").capitalize()
-	var trait: String = unit_data.get("trait", "").capitalize()
-	_set_trait_row(race, trait, border)
+	var race: String       = unit_data.get("race",  "").capitalize()
+	var trait_name: String = unit_data.get("trait", "").capitalize()
+	_set_trait_row(race, trait_name, border)
 
 	_overlay.color = Color(0, 0, 0, 0)
 	_tap_area.disabled = false
