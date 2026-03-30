@@ -14,7 +14,7 @@ const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
 
-var _cards: Array[UnitCard] = []
+var _cards: Array = []
 var _reroll_btn: Button = null
 var _xp_btn: Button = null
 var _lock_btn: Button = null
@@ -26,8 +26,8 @@ var _bench_label: Label = null
 var _status_label: Label = null
 var _locked: bool = false
 var _locked_snapshot: Array[String] = []
-var _bench_ui: BenchUI = null
-var _board_ui: BoardUI = null
+var _bench_ui = null
+var _board_ui = null
 var _phase: int = PREP_PHASE
 var _touch_hints_enabled: bool = true
 
@@ -161,7 +161,7 @@ func _build_buttons() -> void:
 	add_child(_lock_btn)
 
 
-func _make_unit_card() -> UnitCard:
+func _make_unit_card():
 	# Inline card scene construction
 	var card := UnitCard.new()
 	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
@@ -364,8 +364,8 @@ func _bind_scene_peers() -> void:
 	if root == null:
 		return
 
-	_bench_ui = root.get_node_or_null("BenchUI") as BenchUI
-	_board_ui = root.get_node_or_null("BoardUI") as BoardUI
+	_bench_ui = root.get_node_or_null("BenchUI")
+	_board_ui = root.get_node_or_null("BoardUI")
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
@@ -396,7 +396,7 @@ func _on_board_changed() -> void:
 	_refresh_overview()
 
 
-func _on_bench_changed(_unit: Unit) -> void:
+func _on_bench_changed(_unit) -> void:
 	_refresh_overview()
 
 

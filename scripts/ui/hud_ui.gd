@@ -30,9 +30,9 @@ var _overlay_title: Label = null
 var _overlay_body: Label = null
 var _restart_btn: Button = null
 var _menu_btn: Button = null
-var _board_ui: BoardUI = null
-var _bench_ui: BenchUI = null
-var _shop_ui: ShopUI = null
+var _board_ui = null
+var _bench_ui = null
+var _shop_ui = null
 var _phase: int = PREP_PHASE
 var _touch_hints_enabled: bool = true
 var _selected_item_index: int = -1
@@ -463,9 +463,9 @@ func _bind_scene_peers() -> void:
 	if root == null:
 		return
 
-	_board_ui = root.get_node_or_null("BoardUI") as BoardUI
-	_bench_ui = root.get_node_or_null("BenchUI") as BenchUI
-	_shop_ui = root.get_node_or_null("ShopUI") as ShopUI
+	_board_ui = root.get_node_or_null("BoardUI")
+	_bench_ui = root.get_node_or_null("BenchUI")
+	_shop_ui = root.get_node_or_null("ShopUI")
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
@@ -644,7 +644,7 @@ func _on_inventory_slot_pressed(index: int) -> void:
 	_refresh_overview()
 
 
-func _on_unit_targeted_for_item(unit: Unit) -> void:
+func _on_unit_targeted_for_item(unit) -> void:
 	if _selected_item_index < 0 or unit == null:
 		return
 	if GameManager.equip_inventory_item_to_unit(_selected_item_index, unit):

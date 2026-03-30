@@ -22,14 +22,14 @@ var _slots: Array[Control] = []
 var _units: Array = []         # Unit or null per slot
 var _selected_slot: int = -1   # -1 = nothing selected
 var _interaction_enabled: bool = true
-var _board_ui: BoardUI = null
+var _board_ui = null
 var _phase_label: Label = null
 var _count_label: Label = null
 var _hint_label: Label = null
 var _touch_hints_enabled: bool = true
 
-signal unit_selected_from_bench(unit: Unit)
-signal unit_sold(unit: Unit)
+signal unit_selected_from_bench(unit)
+signal unit_sold(unit)
 
 
 func _ready() -> void:
@@ -160,7 +160,7 @@ func _make_slot(index: int) -> Control:
 
 # ── Public API ─────────────────────────────────────────────────────────────
 
-func add_unit(unit: Unit) -> bool:
+func add_unit(unit) -> bool:
 	var slot: int = _find_free_slot()
 	if slot != -1:
 		_units[slot] = unit
@@ -194,7 +194,7 @@ func can_accept_purchase(unit_id: String) -> bool:
 	return _can_merge_unit(unit_id)
 
 
-func can_accept_unit(unit: Unit) -> bool:
+func can_accept_unit(unit) -> bool:
 	if unit == null:
 		return false
 	if _find_free_slot() != -1:
@@ -202,8 +202,8 @@ func can_accept_unit(unit: Unit) -> bool:
 	return unit.star_level == 1 and _can_merge_unit(unit.unit_id)
 
 
-func remove_unit_at(slot: int) -> Unit:
-	var unit: Unit = _units[slot]
+func remove_unit_at(slot: int):
+	var unit = _units[slot]
 	if unit == null:
 		return null
 	_units[slot] = null
@@ -254,7 +254,7 @@ func _on_slot_tapped(index: int) -> void:
 	if not _interaction_enabled:
 		return
 
-	var unit: Unit = _units[index]
+	var unit = _units[index]
 
 	if _selected_slot == index:
 		# Tap same slot → sell
@@ -276,7 +276,7 @@ func _on_slot_tapped(index: int) -> void:
 
 
 # Called by board_ui when unit was successfully placed on board
-func on_unit_placed_on_board(unit: Unit) -> void:
+func on_unit_placed_on_board(unit) -> void:
 	var idx: int = _units.find(unit)
 	if idx != -1:
 		_units[idx] = null
@@ -286,20 +286,20 @@ func on_unit_placed_on_board(unit: Unit) -> void:
 
 
 # Called by board_ui when a unit is sent back to bench
-func receive_unit_from_board(unit: Unit) -> void:
+func receive_unit_from_board(unit) -> void:
 	add_unit(unit)
 
 
 # ── Merge (star upgrade) ───────────────────────────────────────────────────
 
-func _check_merge(new_unit: Unit) -> void:
+func _check_merge(new_unit) -> void:
 	# Count how many of the same unit_id we have (star_level 1 only)
 	if new_unit.star_level != 1:
 		return
 
 	var matches: Array = []
 	for i in BENCH_SLOTS:
-		var u: Unit = _units[i]
+		var u = _units[i]
 		if u != null and u.unit_id == new_unit.unit_id and u.star_level == 1:
 			matches.append(i)
 
@@ -308,7 +308,7 @@ func _check_merge(new_unit: Unit) -> void:
 
 	# Upgrade: keep first slot, remove other two
 	var keep_idx: int = matches[0]
-	var base_unit: Unit = _units[keep_idx]
+	var base_unit = _units[keep_idx]
 	base_unit.upgrade_to_star(2)
 
 	for i in range(1, 3):
@@ -327,8 +327,8 @@ func _apply_direct_merge(unit_id: String) -> void:
 
 	var keep_idx: int = matches[0]
 	var remove_idx: int = matches[1]
-	var base_unit: Unit = _units[keep_idx]
-	var removed_unit: Unit = _units[remove_idx]
+	var base_unit = _units[keep_idx]
+	var removed_unit = _units[remove_idx]
 	if base_unit == null or removed_unit == null:
 		return
 
@@ -353,7 +353,7 @@ func _show_upgrade_flash(slot_idx: int) -> void:
 # ── Sell ─────────────────────────────────────────────────────────────────────
 
 func _sell_unit(slot_idx: int) -> void:
-	var unit: Unit = _units[slot_idx]
+	var unit = _units[slot_idx]
 	if unit == null:
 		return
 	var sell_value: int = unit.cost * unit.star_level
@@ -369,7 +369,7 @@ func _sell_unit(slot_idx: int) -> void:
 
 func _refresh_slot(index: int) -> void:
 	var slot: Control = _slots[index]
-	var unit: Unit = _units[index]
+	var unit = _units[index]
 	var bg: TextureRect = slot.get_node("BG") as TextureRect
 	var portrait: TextureRect = slot.get_node("Portrait") as TextureRect
 	var name_lbl: Label = slot.get_node("NameLabel") as Label
@@ -414,7 +414,7 @@ func _find_free_slot() -> int:
 func _find_matching_slots(unit_id: String) -> Array[int]:
 	var matches: Array[int] = []
 	for i in BENCH_SLOTS:
-		var unit: Unit = _units[i]
+		var unit = _units[i]
 		if unit != null and unit.unit_id == unit_id and unit.star_level == 1:
 			matches.append(i)
 	return matches
@@ -431,7 +431,7 @@ func _bind_scene_peers() -> void:
 	if root == null:
 		return
 
-	_board_ui = root.get_node_or_null("BoardUI") as BoardUI
+	_board_ui = root.get_node_or_null("BoardUI")
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
@@ -447,7 +447,7 @@ func _bind_scene_peers() -> void:
 	_on_phase_changed(PREP_PHASE)
 
 
-func _on_board_unit_placed(unit: Unit, _col: int, _row: int) -> void:
+func _on_board_unit_placed(unit, _col: int, _row: int) -> void:
 	on_unit_placed_on_board(unit)
 
 

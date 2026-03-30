@@ -13,21 +13,21 @@ const TILE_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
 enum InputState { IDLE, UNIT_SELECTED }
 
 var input_state: InputState = InputState.IDLE
-var selected_unit: Unit = null
+var selected_unit = null
 var selected_from_cell: Vector2i = Vector2i(-1, -1)
 var selected_from_bench: bool = false
 var team_capacity: int = 5
 var _interaction_enabled: bool = true
-var _bench_ui: BenchUI = null
-var _hud_ui: HudUI = null
+var _bench_ui = null
+var _hud_ui = null
 
 # Grid: [col][row] -> Unit or null
 var grid: Array = []
 
-signal unit_placed(unit: Unit, col: int, row: int)
-signal unit_moved(unit: Unit, from: Vector2i, to: Vector2i)
-signal unit_sent_to_bench(unit: Unit)
-signal unit_tapped(unit: Unit)
+signal unit_placed(unit, col: int, row: int)
+signal unit_moved(unit, from: Vector2i, to: Vector2i)
+signal unit_sent_to_bench(unit)
+signal unit_tapped(unit)
 
 @onready var highlight_layer: Node2D = $HighlightLayer
 @onready var cell_highlights: Array = []
@@ -49,7 +49,7 @@ func _initialize_grid() -> void:
 
 
 # Called by bench UI when a unit is tapped on the bench
-func select_unit_from_bench(unit: Unit) -> void:
+func select_unit_from_bench(unit) -> void:
 	_set_selected(unit, Vector2i(-1, -1), true)
 
 
@@ -102,7 +102,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_clear_selection()
 
 
-func _set_selected(unit: Unit, from_cell: Vector2i, from_bench: bool) -> void:
+func _set_selected(unit, from_cell: Vector2i, from_bench: bool) -> void:
 	selected_unit = unit
 	selected_from_cell = from_cell
 	selected_from_bench = from_bench
@@ -131,7 +131,7 @@ func _place_selected_unit(to_cell: Vector2i) -> void:
 
 
 func _swap_units(to_cell: Vector2i) -> void:
-	var other_unit: Unit = grid[to_cell.x][to_cell.y]
+	var other_unit = grid[to_cell.x][to_cell.y]
 
 	grid[to_cell.x][to_cell.y] = selected_unit
 	selected_unit.board_position = to_cell
@@ -153,7 +153,7 @@ func _swap_units(to_cell: Vector2i) -> void:
 
 func _remove_from_board(cell: Vector2i) -> void:
 	if _is_valid_cell(cell.x, cell.y):
-		var unit: Unit = grid[cell.x][cell.y]
+		var unit = grid[cell.x][cell.y]
 		if unit != null:
 			grid[cell.x][cell.y] = null
 			unit.is_on_bench = true
@@ -279,8 +279,8 @@ func _bind_scene_peers() -> void:
 	if root == null:
 		return
 
-	_bench_ui = root.get_node_or_null("BenchUI") as BenchUI
-	_hud_ui = root.get_node_or_null("HudUI") as HudUI
+	_bench_ui = root.get_node_or_null("BenchUI")
+	_hud_ui = root.get_node_or_null("HudUI")
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
@@ -303,17 +303,17 @@ func _on_phase_changed(phase: int) -> void:
 	queue_redraw()
 
 
-func _on_unit_placed_on_board(unit: Unit, _col: int, _row: int) -> void:
+func _on_unit_placed_on_board(unit, _col: int, _row: int) -> void:
 	if _bench_ui != null:
 		_bench_ui.on_unit_placed_on_board(unit)
 
 
-func _on_unit_sent_to_bench(unit: Unit) -> void:
+func _on_unit_sent_to_bench(unit) -> void:
 	if _bench_ui != null:
 		_bench_ui.receive_unit_from_board(unit)
 
 
-func _can_send_unit_to_bench(unit: Unit) -> bool:
+func _can_send_unit_to_bench(unit) -> bool:
 	if unit == null:
 		return false
 	if _bench_ui == null:
