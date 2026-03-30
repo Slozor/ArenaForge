@@ -11,6 +11,12 @@ const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
 const SLOT_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
 const PORTRAIT_TEXTURE: Texture2D = preload("res://assets/portraits/placeholder_unit.svg")
+const COST_COLORS: Dictionary = {
+	1: Color(0.65, 0.65, 0.65),
+	2: Color(0.15, 0.70, 0.30),
+	3: Color(0.20, 0.45, 0.90),
+	4: Color(0.60, 0.20, 0.90)
+}
 
 var _slots: Array[Control] = []
 var _units: Array = []         # Unit or null per slot
@@ -379,7 +385,7 @@ func _refresh_slot(index: int) -> void:
 		return
 
 	var cost: int = unit.cost
-	var tier_color: Color = UnitCard.COST_COLORS.get(cost, Color.GRAY)
+	var tier_color: Color = COST_COLORS.get(cost, Color.GRAY)
 	bg.modulate = tier_color.lightened(0.2)
 	portrait.modulate = tier_color.lightened(0.05)
 	name_lbl.text = unit.unit_name

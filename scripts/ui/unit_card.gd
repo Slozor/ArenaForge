@@ -26,15 +26,15 @@ var unit_data: Dictionary = {}
 var is_affordable: bool = true
 var is_empty: bool = true
 
-signal card_tapped(unit_id: String)
+signal card_tapped(unit_id)
 
-@onready var _portrait_rect: TextureRect = $Portrait
-@onready var _name_label: Label = $NameLabel
-@onready var _cost_label: Label = $CostLabel
-@onready var _trait_label: Label = $TraitLabel
-@onready var _race_label: Label = $RaceLabel
-@onready var _overlay: ColorRect = $Overlay
-@onready var _tap_area: Button = $TapArea
+@onready var _portrait_rect = $Portrait
+@onready var _name_label = $NameLabel
+@onready var _cost_label = $CostLabel
+@onready var _trait_label = $TraitLabel
+@onready var _race_label = $RaceLabel
+@onready var _overlay = $Overlay
+@onready var _tap_area = $TapArea
 
 
 func _ready() -> void:
