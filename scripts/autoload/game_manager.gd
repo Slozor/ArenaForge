@@ -225,11 +225,11 @@ func craft_inventory_items(index_a: int, index_b: int) -> String:
 	if result_item == "":
 		return ""
 
-	remove_item_from_inventory(first_index)
-	remove_item_from_inventory(second_index)
-	if not add_item_to_inventory(result_item):
+	# Remove higher index first to avoid shifting lower index
+	item_inventory.remove_at(first_index)
+	item_inventory.remove_at(second_index)
+	if not add_item_to_inventory(result_item):  # add_item_to_inventory emits once
 		return ""
-	inventory_changed.emit(item_inventory)
 	return result_item
 
 

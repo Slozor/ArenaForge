@@ -233,7 +233,7 @@ func _get_player_units() -> Array:
 
 
 func _count_alive_units(units: Array) -> int:
-	return units.filter(func(unit): return int(unit.state) != 3).size()
+	return units.filter(func(unit): return int(unit.state) != unit.STATE_DEAD).size()
 
 
 func _refresh_board_state() -> void:
