@@ -358,7 +358,7 @@ func update_synergies(board_units: Array) -> void:
 		var is_active: bool = false
 		var data: Dictionary = DataManager.get_race(id)
 		if data.is_empty():
-			data = DataManager.get_class(id)
+			data = DataManager.get_class_data(id)
 		for threshold in data.get("thresholds", []):
 			if cnt >= threshold.get("count", 999):
 				is_active = true

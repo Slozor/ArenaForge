@@ -60,7 +60,7 @@ func get_race(race_id: String) -> Dictionary:
 	return races.get(race_id, {})
 
 
-func get_class(class_id: String) -> Dictionary:
+func get_class_data(class_id: String) -> Dictionary:
 	return classes.get(class_id, {})
 
 

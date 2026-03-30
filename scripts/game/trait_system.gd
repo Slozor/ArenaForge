@@ -33,7 +33,7 @@ static func get_active_synergies(board_units: Array) -> Array:
 
 	for class_id in class_counts:
 		var count: int = class_counts[class_id]
-		var class_data: Dictionary = DataManager.get_class(class_id)
+		var class_data: Dictionary = DataManager.get_class_data(class_id)
 		if class_data.is_empty():
 			continue
 		var threshold = _get_active_threshold(class_data.get("thresholds", []), count)

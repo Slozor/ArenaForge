@@ -196,7 +196,7 @@ func remove_item_from_inventory(index: int) -> String:
 	return item_id
 
 
-func equip_inventory_item_to_unit(index: int, unit: Unit) -> bool:
+func equip_inventory_item_to_unit(index: int, unit) -> bool:
 	if unit == null or index < 0 or index >= item_inventory.size():
 		return false
 	if unit.equipped_item != "":
@@ -233,21 +233,21 @@ func craft_inventory_items(index_a: int, index_b: int) -> String:
 	return result_item
 
 
-func grant_item_reward(item_id: String, units: Array[Unit] = []) -> bool:
+func grant_item_reward(item_id: String, units: Array = []) -> bool:
 	if item_id == "":
 		return false
 	var item_data: Dictionary = DataManager.get_item(item_id)
 	if item_data.is_empty():
 		return false
 	if item_data.get("auto_equip", false):
-		var target: Unit = _select_reward_target(units)
+		var target = _select_reward_target(units)
 		if target != null and target.equipped_item == "":
 			target.equip_item(item_id, item_data)
 			return true
 	return add_item_to_inventory(item_id)
 
 
-func grant_item_rewards(item_ids: Array, units: Array[Unit] = []) -> Array[String]:
+func grant_item_rewards(item_ids: Array, units: Array = []) -> Array[String]:
 	var granted: Array[String] = []
 	for item_id in item_ids:
 		var resolved: String = str(item_id)
@@ -315,8 +315,8 @@ func next_round() -> void:
 	change_state(GameState.PREPARATION)
 
 
-func _select_reward_target(units: Array[Unit]) -> Unit:
-	var best: Unit = null
+func _select_reward_target(units: Array):
+	var best = null
 	var best_score: int = -1
 	for unit in units:
 		if unit == null or unit.state == Unit.State.DEAD:

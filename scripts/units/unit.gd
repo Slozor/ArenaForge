@@ -43,7 +43,7 @@ var state: State = State.IDLE
 var board_position: Vector2i = Vector2i(-1, -1)
 var is_on_bench: bool = true
 var has_revived: bool = false
-var target: Unit = null
+var target = null
 var _flash_color: Color = Color.TRANSPARENT
 var _flash_strength: float = 0.0
 var _burn_strength: float = 0.0
@@ -51,7 +51,7 @@ var _slow_strength: float = 0.0
 var _pulse_scale: float = 1.0
 var _is_dying: bool = false
 
-signal died(unit: Unit)
+signal died(unit)
 signal health_changed(current: int, maximum: int)
 
 
@@ -255,6 +255,13 @@ func play_death_pop() -> void:
 	var tween := create_tween()
 	tween.tween_property(self, "scale", Vector2.ONE * 1.2, 0.08)
 	tween.tween_property(self, "modulate", Color(1.0, 0.35, 0.35, 0.0), 0.22)
+
+
+func cancel_death_visuals() -> void:
+	_is_dying = false
+	scale = Vector2.ONE
+	modulate = Color.WHITE
+	queue_redraw()
 
 
 func _race_color() -> Color:

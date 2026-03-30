@@ -17,6 +17,7 @@ var _combat_ended: bool = false
 var _elapsed: float = 0.0
 var _move_timer: float = 0.0
 var _sudden_death: bool = false
+var _sudden_death_accumulator: float = 0.0
 
 # Per-unit state: attack cooldown + passive state
 # Key: unit instance id, Value: { "atk_timer": float, "passive": Dictionary }
@@ -45,6 +46,7 @@ func start(p_units: Array, e_units: Array) -> void:
 	_elapsed = 0.0
 	_move_timer = 0.0
 	_sudden_death = false
+	_sudden_death_accumulator = 0.0
 	_unit_state.clear()
 	_occupied.clear()
 	_burn_targets.clear()
@@ -268,6 +270,7 @@ func _revive_unit(unit: Unit) -> void:
 	unit.current_health = int(float(unit.get_max_health()) * 0.50)
 	unit.state = Unit.State.IDLE
 	unit.temp_attack_speed_mod = 0.0
+	unit.cancel_death_visuals()
 	_register_position(unit)
 	_burn_targets.erase(unit.get_instance_id())
 	_slow_targets.erase(unit.get_instance_id())
@@ -380,9 +383,14 @@ func _tick_slow_effects(delta: float) -> void:
 # ── Sudden death ─────────────────────────────────────────────────────────────
 
 func _apply_sudden_death(delta: float) -> void:
+	_sudden_death_accumulator += float(SUDDEN_DEATH_DPS) * delta
+	var tick_damage: int = int(_sudden_death_accumulator)
+	if tick_damage <= 0:
+		return
+	_sudden_death_accumulator -= float(tick_damage)
 	for unit in player_units + enemy_units:
 		if unit.state != Unit.State.DEAD:
-			unit.take_damage(int(float(SUDDEN_DEATH_DPS) * delta), true)
+			unit.take_damage(tick_damage, true)
 
 
 # ── Win condition ────────────────────────────────────────────────────────────
