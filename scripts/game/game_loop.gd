@@ -27,6 +27,7 @@ var enemy_units: Array[Unit] = []
 var current_round_data: Dictionary = {}
 var current_round_kind: String = "combat"
 var current_opponent_index: int = 0
+var _player_prep_positions: Dictionary = {}
 
 signal phase_changed(phase: Phase)
 signal prep_timer_updated(seconds_left: float)
@@ -44,6 +45,7 @@ func _ready() -> void:
 	combat_controller.name = "CombatController"
 	add_child(combat_controller)
 	combat_controller.combat_ended.connect(on_combat_ended)
+	combat_controller.unit_moved.connect(_on_combat_unit_moved)
 
 	enemy_spawner = EnemySpawner.new()
 	enemy_spawner.name = "EnemySpawner"
@@ -93,8 +95,11 @@ func _enter_combat() -> void:
 	phase_changed.emit(Phase.COMBAT)
 	if hud_ui != null:
 		hud_ui.set_skip_button_visible(false)
+	_store_player_prep_positions()
 	_apply_synergies_to_board()
 	_spawn_enemy_team()
+	_position_units_for_combat(_get_player_units())
+	_position_units_for_combat(enemy_units)
 	combat_controller.start(_get_player_units(), enemy_units)
 
 
@@ -122,6 +127,7 @@ func skip_prep() -> void:
 func on_combat_ended(player_won: bool) -> void:
 	if current_phase != Phase.COMBAT:
 		return
+	_restore_player_prep_positions()
 	current_phase = Phase.RESULT
 	phase_changed.emit(Phase.RESULT)
 
@@ -173,6 +179,7 @@ func _grant_round_income() -> void:
 
 
 func _resolve_special_round() -> void:
+	_restore_player_prep_positions()
 	current_phase = Phase.RESULT
 	phase_changed.emit(Phase.RESULT)
 	_grant_round_reward()
@@ -306,3 +313,35 @@ func _restart_run() -> void:
 
 func _return_to_menu() -> void:
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+func _store_player_prep_positions() -> void:
+	_player_prep_positions.clear()
+	for unit in _get_player_units():
+		_player_prep_positions[unit.get_instance_id()] = unit.board_position
+
+
+func _restore_player_prep_positions() -> void:
+	if board_ui == null:
+		return
+	for unit in _get_player_units():
+		var instance_id: int = unit.get_instance_id()
+		if not _player_prep_positions.has(instance_id):
+			continue
+		var prep_pos: Vector2i = _player_prep_positions[instance_id]
+		unit.board_position = prep_pos
+		unit.position = board_ui.cell_to_world(prep_pos.x, prep_pos.y)
+	_player_prep_positions.clear()
+
+
+func _position_units_for_combat(units: Array[Unit]) -> void:
+	if board_ui == null:
+		return
+	for unit in units:
+		unit.position = board_ui.combat_cell_to_world(unit.board_position.x, unit.board_position.y)
+
+
+func _on_combat_unit_moved(unit: Unit, to: Vector2i) -> void:
+	if board_ui == null or unit == null:
+		return
+	unit.position = board_ui.combat_cell_to_world(to.x, to.y)

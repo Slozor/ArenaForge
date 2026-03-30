@@ -19,6 +19,7 @@ var selected_from_bench: bool = false
 var team_capacity: int = 5
 var _interaction_enabled: bool = true
 var _bench_ui: BenchUI = null
+var _hud_ui: HudUI = null
 
 # Grid: [col][row] -> Unit or null
 var grid: Array = []
@@ -75,6 +76,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	match input_state:
 		InputState.IDLE:
 			if on_board and grid[cell.x][cell.y] != null:
+				if _hud_ui != null and _hud_ui.is_item_targeting_active():
+					unit_tapped.emit(grid[cell.x][cell.y])
+					return
 				unit_tapped.emit(grid[cell.x][cell.y])
 				_set_selected(grid[cell.x][cell.y], cell, false)
 
@@ -192,6 +196,11 @@ func cell_to_world(col: int, row: int) -> Vector2:
 	return _cell_to_world(col, row)
 
 
+func combat_cell_to_world(col: int, row: int) -> Vector2:
+	var combat_cell_h: float = CELL_SIZE * 0.5
+	return BOARD_OFFSET + Vector2(col * CELL_SIZE + CELL_SIZE * 0.5, row * combat_cell_h + combat_cell_h * 0.5)
+
+
 func _cell_to_world(col: int, row: int) -> Vector2:
 	return BOARD_OFFSET + Vector2(col * CELL_SIZE + CELL_SIZE * 0.5, row * CELL_SIZE + CELL_SIZE * 0.5)
 
@@ -268,6 +277,7 @@ func _bind_scene_peers() -> void:
 		return
 
 	_bench_ui = root.get_node_or_null("BenchUI") as BenchUI
+	_hud_ui = root.get_node_or_null("HudUI") as HudUI
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)

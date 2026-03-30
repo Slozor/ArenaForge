@@ -81,6 +81,7 @@ func refresh_shop(force: bool = false) -> Array[String]:
 		shop_refreshed.emit(shop_units)
 		return shop_units.duplicate()
 
+	_return_shop_units_to_pool()
 	var odds: Array = get_tier_odds()
 	shop_units.clear()
 
@@ -116,9 +117,6 @@ func purchase_unit(unit_id: String) -> bool:
 		return false
 
 	shop_units.erase(unit_id)
-	if unit_id in unit_pool:
-		unit_pool[unit_id] = maxi(0, unit_pool[unit_id] - 1)
-
 	unit_purchased.emit(unit_id)
 	return true
 
@@ -153,7 +151,16 @@ func _draw_unit_by_odds(odds: Array) -> String:
 		if candidates.is_empty():
 			return ""
 
-	return candidates[randi() % candidates.size()]
+	var selected_unit: String = candidates[randi() % candidates.size()]
+	unit_pool[selected_unit] = maxi(0, unit_pool.get(selected_unit, 0) - 1)
+	return selected_unit
+
+
+func _return_shop_units_to_pool() -> void:
+	for unit_id in shop_units:
+		if unit_id == "":
+			continue
+		return_unit_to_pool(unit_id)
 
 
 func _ensure_pool_ready() -> void:

@@ -155,7 +155,7 @@ func _build_inventory_row() -> void:
 	_inventory_label.add_theme_color_override("font_color", Color(0.80, 0.86, 0.95))
 	add_child(_inventory_label)
 
-	for i in 6:
+	for i in GameManager.MAX_INVENTORY_ITEMS:
 		var slot_bg := ColorRect.new()
 		slot_bg.color = Color(0.10, 0.13, 0.18, 0.95)
 		slot_bg.position = Vector2(198 + i * 32, 9)
@@ -503,6 +503,11 @@ func _on_phase_changed(phase: int) -> void:
 	_phase = phase
 	if phase == PREP_PHASE:
 		hide_round_result()
+	for button in _inventory_buttons:
+		button.disabled = phase != PREP_PHASE
+	if phase != PREP_PHASE and _selected_item_index != -1:
+		_selected_item_index = -1
+		_refresh_inventory_selection()
 	_refresh_phase_label()
 	_refresh_overview()
 
@@ -653,6 +658,10 @@ func _on_unit_targeted_for_item(unit: Unit) -> void:
 		_result_label.text = "Unit already has an item"
 		_result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
 		_result_label.visible = true
+
+
+func is_item_targeting_active() -> bool:
+	return _selected_item_index >= 0 and _phase == PREP_PHASE
 
 
 func _refresh_inventory_selection() -> void:

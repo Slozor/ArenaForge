@@ -291,7 +291,6 @@ func _on_card_tapped(unit_id: String) -> void:
 		var cost: int = DataManager.get_unit(unit_id).get("cost", 1)
 		GameManager.add_gold(cost)
 		ShopManager.shop_units.append(unit_id)
-		ShopManager.return_unit_to_pool(unit_id)
 		ShopManager.shop_refreshed.emit(ShopManager.shop_units)
 		_set_status("Bench full")
 		_refresh_overview()
