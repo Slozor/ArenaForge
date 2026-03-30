@@ -5,7 +5,6 @@ class_name UnitCard
 const CARD_W: float = 148.0
 const CARD_H: float = 168.0
 
-# Mirrors UITheme for static preload access
 const COST_COLORS: Dictionary = {
 	1: Color(0.55, 0.55, 0.58),
 	2: Color(0.07, 0.60, 0.22),
@@ -26,18 +25,69 @@ var is_empty: bool = true
 
 signal card_tapped(uid: String)
 
-@onready var _portrait    = $Portrait
-@onready var _name_label  = $NameLabel
-@onready var _cost_badge  = $CostBadge
-@onready var _cost_label  = $CostLabel
-@onready var _trait_row   = $TraitRow
-@onready var _overlay     = $Overlay
-@onready var _tap_area    = $TapArea
+var _portrait:    TextureRect
+var _name_label:  Label
+var _cost_badge:  ColorRect
+var _cost_label:  Label
+var _trait_row:   HBoxContainer
+var _overlay:     ColorRect
+var _tap_area:    Button
 
 
 func _ready() -> void:
-	_tap_area.pressed.connect(_on_tapped)
 	custom_minimum_size = Vector2(CARD_W, CARD_H)
+	mouse_filter = Control.MOUSE_FILTER_PASS
+
+	_portrait = TextureRect.new()
+	_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_SCALE
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_portrait)
+
+	_cost_badge = ColorRect.new()
+	_cost_badge.color = UITheme.BG_PANEL
+	_cost_badge.position = Vector2(CARD_W - 28, 4)
+	_cost_badge.custom_minimum_size = Vector2(24, 24)
+	_cost_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_cost_badge)
+
+	_cost_label = Label.new()
+	_cost_label.position = Vector2(CARD_W - 28, 4)
+	_cost_label.custom_minimum_size = Vector2(24, 24)
+	_cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_cost_label.add_theme_font_size_override("font_size", 13)
+	_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_cost_label)
+
+	_name_label = Label.new()
+	_name_label.position = Vector2(6, CARD_H - 42)
+	_name_label.custom_minimum_size = Vector2(CARD_W - 12, 18)
+	_name_label.add_theme_font_size_override("font_size", 11)
+	_name_label.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
+	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_name_label)
+
+	_trait_row = HBoxContainer.new()
+	_trait_row.position = Vector2(4, CARD_H - 22)
+	_trait_row.custom_minimum_size = Vector2(CARD_W - 8, 18)
+	_trait_row.add_theme_constant_override("separation", 3)
+	_trait_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_trait_row)
+
+	_overlay = ColorRect.new()
+	_overlay.color = Color(0, 0, 0, 0)
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_overlay)
+
+	_tap_area = Button.new()
+	_tap_area.flat = true
+	_tap_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tap_area.pressed.connect(_on_tapped)
+	add_child(_tap_area)
+
 	_show_empty()
 
 
