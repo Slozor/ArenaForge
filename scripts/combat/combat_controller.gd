@@ -425,7 +425,7 @@ func _register_position(unit) -> void:
 		_occupied[unit.board_position] = unit
 
 
-func _find_free_adjacent(center: Vector2i, mover) -> Vector2i:
+func _find_free_adjacent(center: Vector2i, _mover) -> Vector2i:
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
 			if dx == 0 and dy == 0:

@@ -5,7 +5,6 @@ class_name BenchUI
 const BENCH_SLOTS: int = 9
 const SLOT_SIZE: float = 80.0
 const SLOT_GAP: float = 8.0
-const BENCH_Y: float = 0.0
 const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
@@ -28,19 +27,32 @@ var _phase_label: Label = null
 var _count_label: Label = null
 var _hint_label: Label = null
 var _touch_hints_enabled: bool = true
+var _background_line: ColorRect = null
+var _title_label: Label = null
 
 signal unit_selected_from_bench(unit)
 signal unit_sold(unit)
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(1280, SLOT_SIZE + 16)
+	anchor_left = 0.0
+	anchor_top = 1.0
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	offset_left = 0.0
+	offset_top = -(SLOT_SIZE + 34.0)
+	offset_right = 0.0
+	offset_bottom = -200.0
+	custom_minimum_size = Vector2(0.0, SLOT_SIZE + 34.0)
 	_touch_hints_enabled = bool(UISettings.load_settings().get(UISettings.KEY_TOUCH_HINTS, true))
 	_build_background()
 	_build_header()
 	_build_slots()
 	_bind_scene_peers()
 	_refresh_overview()
+	if not resized.is_connected(_refresh_layout):
+		resized.connect(_refresh_layout)
+	_refresh_layout()
 
 
 func _build_background() -> void:
@@ -49,19 +61,18 @@ func _build_background() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	var top_line := ColorRect.new()
-	top_line.color = Color(0.3, 0.35, 0.45)
-	top_line.custom_minimum_size = Vector2(1280, 2)
-	add_child(top_line)
+	_background_line = ColorRect.new()
+	_background_line.color = Color(0.3, 0.35, 0.45)
+	add_child(_background_line)
 
 
 func _build_header() -> void:
-	var title := Label.new()
-	title.text = "BENCH"
-	title.position = Vector2(18, 6)
-	title.add_theme_font_size_override("font_size", 13)
-	title.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	add_child(title)
+	_title_label = Label.new()
+	_title_label.text = "BENCH"
+	_title_label.position = Vector2(18, 6)
+	_title_label.add_theme_font_size_override("font_size", 13)
+	_title_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	add_child(_title_label)
 
 	_count_label = Label.new()
 	_count_label.position = Vector2(96, 6)
@@ -83,13 +94,9 @@ func _build_header() -> void:
 
 
 func _build_slots() -> void:
-	var total_w: float = BENCH_SLOTS * SLOT_SIZE + (BENCH_SLOTS - 1) * SLOT_GAP
-	var start_x: float = (1280.0 - total_w) / 2.0
-
 	for i in BENCH_SLOTS:
 		_units.append(null)
 		var slot := _make_slot(i)
-		slot.position = Vector2(start_x + i * (SLOT_SIZE + SLOT_GAP), 8)
 		add_child(slot)
 		_slots.append(slot)
 
@@ -157,6 +164,50 @@ func _make_slot(index: int) -> Control:
 	container.add_child(btn)
 
 	return container
+
+
+func _refresh_layout() -> void:
+	var width: float = maxf(640.0, get_viewport_rect().size.x)
+	var compact: bool = width < 980.0
+	var slot_scale: float = clampf((width - 44.0) / (BENCH_SLOTS * SLOT_SIZE + (BENCH_SLOTS - 1) * SLOT_GAP), 0.62, 1.0)
+	if compact:
+		slot_scale = minf(slot_scale, 0.78)
+	var slot_size: float = SLOT_SIZE * slot_scale
+	var gap: float = maxf(4.0, SLOT_GAP * slot_scale)
+	var header_h: float = 24.0
+	var bench_h: float = slot_size + header_h + 14.0
+	offset_top = -bench_h
+	offset_bottom = -200.0
+
+	if _background_line != null:
+		_background_line.size = Vector2(width, 2.0)
+	if _title_label != null:
+		_title_label.position = Vector2(16.0, 6.0)
+	if _count_label != null:
+		_count_label.position = Vector2(92.0, 6.0)
+	if _phase_label != null:
+		_phase_label.position = Vector2(190.0, 6.0)
+	if _hint_label != null:
+		_hint_label.position = Vector2(width * 0.42, 6.0)
+		_hint_label.visible = _touch_hints_enabled and not compact
+
+	var total_w: float = BENCH_SLOTS * slot_size + (BENCH_SLOTS - 1) * gap
+	var start_x: float = (width - total_w) * 0.5
+	var slots_y: float = header_h + 8.0
+	for i in _slots.size():
+		var slot: Control = _slots[i]
+		slot.position = Vector2(start_x + i * (slot_size + gap), slots_y)
+		slot.custom_minimum_size = Vector2(slot_size, slot_size)
+		slot.size = Vector2(slot_size, slot_size)
+		var portrait: TextureRect = slot.get_node("Portrait") as TextureRect
+		if portrait != null:
+			var portrait_size: float = maxf(24.0, slot_size - 28.0)
+			portrait.position = Vector2((slot_size - portrait_size) * 0.5, (slot_size - portrait_size) * 0.5 - 2.0)
+			portrait.custom_minimum_size = Vector2(portrait_size, portrait_size)
+		var sell_lbl: Label = slot.get_node("SellLabel") as Label
+		if sell_lbl != null:
+			sell_lbl.position = Vector2(0.0, slot_size - 16.0)
+			sell_lbl.custom_minimum_size = Vector2(slot_size, 14.0)
 
 
 # ── Public API ─────────────────────────────────────────────────────────────
@@ -474,5 +525,5 @@ func _refresh_overview() -> void:
 		if not _interaction_enabled:
 			_phase_label.text = "Bench locked during combat."
 	if _hint_label != null:
-		_hint_label.visible = _touch_hints_enabled
+		_hint_label.visible = _touch_hints_enabled and size.x >= 980.0
 		_hint_label.text = "Sell: tap selected unit again. Move back: tap empty space."

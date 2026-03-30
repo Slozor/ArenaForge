@@ -10,7 +10,7 @@ const BODY_RADIUS: float = 20.0
 @export var unit_id: String = ""
 @export var unit_name: String = ""
 @export var race: String = ""
-@export var trait: String = ""
+@export var trait_id: String = ""
 @export var cost: int = 1
 @export var star_level: int = 1
 
@@ -59,7 +59,7 @@ func init(data: Dictionary) -> void:
 	unit_id = data.get("id", "")
 	unit_name = data.get("name", "")
 	race = data.get("race", "")
-	trait = data.get("trait", "")
+	trait_id = data.get("trait", "")
 	cost = data.get("cost", 1)
 	passive = data.get("passive", "")
 
@@ -203,7 +203,13 @@ func _draw() -> void:
 	var body_color: Color = _race_color()
 	var accent_color: Color = _trait_color()
 	var shadow_rect: Rect2 = Rect2(Vector2(-BODY_RADIUS, BODY_RADIUS * 0.65), Vector2(BODY_RADIUS * 2.0, 10))
-	draw_ellipse(shadow_rect.position + shadow_rect.size * 0.5, shadow_rect.size * 0.5, Color(0, 0, 0, 0.28))
+	draw_ellipse(
+		shadow_rect.position + shadow_rect.size * 0.5,
+		shadow_rect.size.x * 0.5,
+		shadow_rect.size.y * 0.5,
+		Color(0, 0, 0, 0.28),
+		true
+	)
 	draw_circle(Vector2.ZERO, BODY_RADIUS + 3.0, body_color.darkened(0.55))
 	draw_circle(Vector2.ZERO, BODY_RADIUS, body_color)
 	draw_circle(Vector2.ZERO, BODY_RADIUS * 0.45, accent_color)
@@ -282,7 +288,7 @@ func _race_color() -> Color:
 
 
 func _trait_color() -> Color:
-	match trait:
+	match trait_id:
 		"warrior", "knight", "vanguard": return Color(0.98, 0.82, 0.42)
 		"mage", "sorcerer": return Color(0.48, 0.72, 1.0)
 		"ranger": return Color(0.60, 0.94, 0.54)

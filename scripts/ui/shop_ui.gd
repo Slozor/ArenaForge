@@ -2,8 +2,6 @@ extends Control
 
 class_name ShopUI
 
-# Layout constants (anchored bottom of 1280×720 screen)
-const SHOP_Y: float = 510.0
 const SHOP_HEIGHT: float = 200.0
 const CARD_W: float = 148.0
 const CARD_H: float = 160.0
@@ -31,13 +29,23 @@ var _bench_ui = null
 var _board_ui = null
 var _phase: int = PREP_PHASE
 var _touch_hints_enabled: bool = true
+var _background_line: ColorRect = null
+var _gold_row: HBoxContainer = null
 
 signal unit_bought(unit_id: String)
 
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	custom_minimum_size = Vector2(1280, SHOP_HEIGHT)
+	anchor_left = 0.0
+	anchor_top = 1.0
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	offset_left = 0.0
+	offset_top = -SHOP_HEIGHT
+	offset_right = 0.0
+	offset_bottom = 0.0
+	size = Vector2(0.0, SHOP_HEIGHT)
+	custom_minimum_size = Vector2(0.0, SHOP_HEIGHT)
 	_touch_hints_enabled = bool(UISettings.load_settings().get(UISettings.KEY_TOUCH_HINTS, true))
 
 	_build_background()
@@ -53,6 +61,9 @@ func _ready() -> void:
 	ShopManager.shop_lock_changed.connect(_on_shop_lock_changed)
 	GameManager.gold_changed.connect(_on_gold_changed)
 	_on_shop_lock_changed(ShopManager.is_shop_locked())
+	if not resized.is_connected(_refresh_layout):
+		resized.connect(_refresh_layout)
+	_refresh_layout()
 
 
 func _build_background() -> void:
@@ -62,18 +73,17 @@ func _build_background() -> void:
 	add_child(bg)
 
 	# Top border line
-	var line := ColorRect.new()
-	line.color = Color(0.3, 0.35, 0.45)
-	line.custom_minimum_size = Vector2(1280, 2)
-	line.position = Vector2.ZERO
-	add_child(line)
+	_background_line = ColorRect.new()
+	_background_line.color = Color(0.3, 0.35, 0.45)
+	_background_line.position = Vector2.ZERO
+	add_child(_background_line)
 
 
 func _build_gold_row() -> void:
-	var row := HBoxContainer.new()
-	row.position = Vector2(20, 8)
-	row.add_theme_constant_override("separation", 6)
-	add_child(row)
+	_gold_row = HBoxContainer.new()
+	_gold_row.position = Vector2(20, 8)
+	_gold_row.add_theme_constant_override("separation", 6)
+	add_child(_gold_row)
 
 	# Gold icon from the art pipeline
 	var gold_icon := TextureRect.new()
@@ -81,19 +91,19 @@ func _build_gold_row() -> void:
 	gold_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	gold_icon.stretch_mode = TextureRect.STRETCH_SCALE
 	gold_icon.custom_minimum_size = Vector2(22, 22)
-	row.add_child(gold_icon)
+	_gold_row.add_child(gold_icon)
 
 	_gold_label = Label.new()
 	_gold_label.text = "0"
 	_gold_label.add_theme_font_size_override("font_size", 22)
 	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
-	row.add_child(_gold_label)
+	_gold_row.add_child(_gold_label)
 
 	_interest_label = Label.new()
 	_interest_label.text = ""
 	_interest_label.add_theme_font_size_override("font_size", 14)
 	_interest_label.add_theme_color_override("font_color", Color(0.6, 0.9, 0.4))
-	row.add_child(_interest_label)
+	_gold_row.add_child(_interest_label)
 
 	_level_label = Label.new()
 	_level_label.text = "Lv. 1"
@@ -125,41 +135,25 @@ func _build_overview_row() -> void:
 
 
 func _build_cards() -> void:
-	# 5 cards, centered horizontally
-	var total_w: float = 5.0 * CARD_W + 4.0 * CARD_GAP
-	var start_x: float = (1280.0 - total_w) / 2.0
-
 	for i in 5:
 		var card = _make_unit_card()
 		if card == null:
 			continue
-		card.position = Vector2(start_x + i * (CARD_W + CARD_GAP), 30)
 		add_child(card)
 		_cards.append(card)
 		card.card_tapped.connect(_on_card_tapped)
 
 
 func _build_buttons() -> void:
-	var cards_right_x: float = (1280.0 + 5.0 * CARD_W + 4.0 * CARD_GAP) / 2.0 + 14.0
-
-	# Reroll button
 	_reroll_btn = _make_button("↺ Reroll\n2g", Color(0.25, 0.45, 0.65))
-	_reroll_btn.position = Vector2(cards_right_x, 30)
-	_reroll_btn.custom_minimum_size = Vector2(BUTTON_W, BUTTON_H)
 	_reroll_btn.pressed.connect(_on_reroll)
 	add_child(_reroll_btn)
 
-	# Buy XP button
 	_xp_btn = _make_button("▲ Buy XP\n4g", Color(0.30, 0.55, 0.30))
-	_xp_btn.position = Vector2(cards_right_x, 90)
-	_xp_btn.custom_minimum_size = Vector2(BUTTON_W, BUTTON_H)
 	_xp_btn.pressed.connect(_on_buy_xp)
 	add_child(_xp_btn)
 
-	# Lock button
 	_lock_btn = _make_button("🔓 Lock", Color(0.45, 0.35, 0.20))
-	_lock_btn.position = Vector2(cards_right_x, 148)
-	_lock_btn.custom_minimum_size = Vector2(BUTTON_W, BUTTON_H - 14)
 	_lock_btn.pressed.connect(_on_toggle_lock)
 	add_child(_lock_btn)
 
@@ -243,6 +237,54 @@ func _make_button(text: String, color: Color) -> Button:
 	btn.add_theme_stylebox_override("hover", hover_style)
 	btn.add_theme_font_size_override("font_size", 13)
 	return btn
+
+
+func _refresh_layout() -> void:
+	var width: float = maxf(640.0, get_viewport_rect().size.x)
+	var compact: bool = width < 980.0
+	var card_scale: float = clampf((width - 220.0) / (5.0 * CARD_W + 4.0 * CARD_GAP), 0.58, 1.0)
+	if compact:
+		card_scale = minf(card_scale, 0.72)
+	var card_w: float = CARD_W * card_scale
+	var card_h: float = CARD_H * card_scale
+	var gap: float = maxf(6.0, CARD_GAP * card_scale)
+	var button_w: float = clampf(BUTTON_W * card_scale, 88.0, 120.0)
+	var button_h: float = clampf(BUTTON_H * card_scale, 38.0, 52.0)
+	var side_pad: float = clampf(width * 0.02, 12.0, 24.0)
+	var cards_total_w: float = 5.0 * card_w + 4.0 * gap
+	var cards_start_x: float = maxf(side_pad, (width - cards_total_w - button_w - 16.0 - side_pad) * 0.5)
+	var cards_y: float = compact ? 44.0 : 30.0
+	var buttons_x: float = minf(width - button_w - side_pad, cards_start_x + cards_total_w + 12.0)
+	var button_gap: float = compact ? 6.0 : 8.0
+
+	if _background_line != null:
+		_background_line.size = Vector2(width, 2.0)
+	if _gold_row != null:
+		_gold_row.position = Vector2(side_pad, 8.0)
+	if _level_label != null:
+		_level_label.position = Vector2(width - 92.0, 8.0)
+	if _team_label != null:
+		_team_label.position = Vector2(width - 250.0, 8.0)
+	if _bench_label != null:
+		_bench_label.position = Vector2(width - 250.0, 26.0)
+	if _status_label != null:
+		_status_label.position = Vector2(side_pad, SHOP_HEIGHT - 24.0)
+		_status_label.custom_minimum_size = Vector2(maxf(220.0, width - side_pad * 2.0), 20.0)
+
+	for i in _cards.size():
+		var card = _cards[i]
+		card.position = Vector2(cards_start_x + i * (card_w + gap), cards_y)
+		card.scale = Vector2.ONE * card_scale
+
+	if _reroll_btn != null:
+		_reroll_btn.position = Vector2(buttons_x, cards_y)
+		_reroll_btn.custom_minimum_size = Vector2(button_w, button_h)
+	if _xp_btn != null:
+		_xp_btn.position = Vector2(buttons_x, cards_y + button_h + button_gap)
+		_xp_btn.custom_minimum_size = Vector2(button_w, button_h)
+	if _lock_btn != null:
+		_lock_btn.position = Vector2(buttons_x, cards_y + (button_h + button_gap) * 2.0)
+		_lock_btn.custom_minimum_size = Vector2(button_w, maxf(32.0, button_h - 10.0))
 
 
 # ── Signal handlers ────────────────────────────────────────────────────────

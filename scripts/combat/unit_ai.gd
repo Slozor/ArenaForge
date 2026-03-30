@@ -11,7 +11,7 @@ const COMBAT_ROWS: int = 8
 # Find the best target for a unit from the enemy list.
 # Priority: closest unit. Tiebreak: prefer non-assassins (tanks first).
 static func find_target(unit, enemies: Array):
-	if unit.trait == "assassin":
+	if unit.trait_id == "assassin":
 		return find_assassin_target(unit, enemies)
 
 	var best_target = null
@@ -22,7 +22,7 @@ static func find_target(unit, enemies: Array):
 			continue
 		var dist: float = _combat_distance(unit.board_position, enemy.board_position)
 		# Role tiebreaker: tanks (warrior/guardian) get +0, others +0.1, assassins +0.2
-		var role_bias: float = _role_bias(enemy.trait)
+		var role_bias: float = _role_bias(enemy.trait_id)
 		var score: float = dist + role_bias
 		if score < best_score:
 			best_score = score
@@ -34,11 +34,11 @@ static func find_target(unit, enemies: Array):
 # Find the weakest enemy (lowest current HP) — used by assassins.
 static func find_weakest_enemy(enemies: Array):
 	var weakest = null
-	var lowest_hp: int = INF
+	var lowest_hp: int = 0
 	for enemy in enemies:
 		if int(enemy.state) == DEAD_STATE:
 			continue
-		if enemy.current_health < lowest_hp:
+		if weakest == null or enemy.current_health < lowest_hp:
 			lowest_hp = enemy.current_health
 			weakest = enemy
 	return weakest
@@ -47,14 +47,14 @@ static func find_weakest_enemy(enemies: Array):
 # Find the assassin target: weakest enemy, with a backline-friendly tiebreak.
 static func find_assassin_target(unit, enemies: Array):
 	var best = null
-	var lowest_hp: int = INF
+	var lowest_hp: int = 0
 	var farthest_dist: float = -1.0
 	for enemy in enemies:
 		if int(enemy.state) == DEAD_STATE:
 			continue
 		var hp: int = enemy.current_health
 		var dist: float = _combat_distance(unit.board_position, enemy.board_position)
-		if hp < lowest_hp or (hp == lowest_hp and dist > farthest_dist):
+		if best == null or hp < lowest_hp or (hp == lowest_hp and dist > farthest_dist):
 			lowest_hp = hp
 			farthest_dist = dist
 			best = enemy

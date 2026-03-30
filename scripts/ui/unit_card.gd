@@ -109,22 +109,14 @@ func _on_tapped() -> void:
 
 
 func _draw() -> void:
-	if is_empty:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)),
-			Color(0.12, 0.14, 0.18), true, 0.0)
-		draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)),
-			Color(0.25, 0.28, 0.32), false, 1.5)
-		return
+	var border_col: Color = Color(0.25, 0.28, 0.32)
+	var border_width: float = 1.5
+	if not is_empty:
+		var cost: int = unit_data.get("cost", 1)
+		border_col = COST_COLORS.get(cost, Color.WHITE)
+		border_width = 2.5
 
-	var cost: int = unit_data.get("cost", 1)
-	var border_col: Color = COST_COLORS.get(cost, Color.WHITE)
-
-	# Card background
-	draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)),
-		Color(0.10, 0.12, 0.16), true)
-	# Border — thicker + colored by cost tier
-	draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)),
-		border_col, false, 2.5)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(CARD_W, CARD_H)), border_col, false, border_width)
 
 
 func _ensure_frame() -> void:

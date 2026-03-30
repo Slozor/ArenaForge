@@ -24,7 +24,7 @@ static func on_combat_start(unit, state: Dictionary) -> void:
 
 
 # Called every delta while combat is running.
-static func on_tick(unit, state: Dictionary, delta: float, allies: Array, enemies: Array) -> void:
+static func on_tick(unit, state: Dictionary, delta: float, allies: Array, _enemies: Array) -> void:
 	match unit.passive:
 		"stealth_opener":
 			if state.get("stealthed", false):
@@ -55,7 +55,7 @@ static func on_tick(unit, state: Dictionary, delta: float, allies: Array, enemie
 
 
 # Called just before an attack lands. Returns final damage.
-static func on_pre_attack(attacker, defender, base_damage: int, state: Dictionary) -> int:
+static func on_pre_attack(attacker, _defender, base_damage: int, state: Dictionary) -> int:
 	var damage: int = base_damage
 
 	match attacker.passive:
@@ -72,7 +72,7 @@ static func on_pre_attack(attacker, defender, base_damage: int, state: Dictionar
 
 
 # Called after an attack lands.
-static func on_hit(attacker, defender, damage_dealt: int, state: Dictionary, all_enemies: Array) -> void:
+static func on_hit(attacker, defender, _damage_dealt: int, state: Dictionary, all_enemies: Array) -> void:
 	match attacker.passive:
 		"armor_shred":
 			defender.armor = maxi(0, defender.armor - int(float(defender.armor) * 0.10))
@@ -88,7 +88,7 @@ static func on_hit(attacker, defender, damage_dealt: int, state: Dictionary, all
 
 
 # Called when this unit kills an enemy.
-static func on_kill(unit, killed, state: Dictionary) -> void:
+static func on_kill(unit, _killed, _state: Dictionary) -> void:
 	match unit.passive:
 		"soul_harvest":
 			var heal_amount: int = int(float(unit.get_max_health()) * 0.25)
@@ -132,7 +132,7 @@ static func _heal_adjacent_ally(healer, allies: Array) -> void:
 			break  # heal only nearest ally
 
 
-static func _pierce_line(attacker, primary_target, all_enemies: Array, damage: int) -> void:
+static func _pierce_line(_attacker, primary_target, all_enemies: Array, damage: int) -> void:
 	# Hits all enemies in the same column as the primary target
 	for enemy in all_enemies:
 		if enemy == primary_target or int(enemy.state) == DEAD_STATE:

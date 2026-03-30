@@ -20,6 +20,10 @@ var team_capacity: int = 5
 var _interaction_enabled: bool = true
 var _bench_ui = null
 var _hud_ui = null
+var _shop_ui = null
+var _board_offset: Vector2 = BOARD_OFFSET
+var _cell_size: float = CELL_SIZE
+var _label_font_size: int = 13
 
 # Grid: [col][row] -> Unit or null
 var grid: Array = []
@@ -36,6 +40,9 @@ signal unit_tapped(unit)
 func _ready() -> void:
 	_initialize_grid()
 	_bind_scene_peers()
+	if not get_viewport().size_changed.is_connected(_refresh_layout):
+		get_viewport().size_changed.connect(_refresh_layout)
+	_refresh_layout()
 	_draw_board()
 
 
@@ -197,17 +204,17 @@ func cell_to_world(col: int, row: int) -> Vector2:
 
 
 func combat_cell_to_world(col: int, row: int) -> Vector2:
-	var combat_cell_h: float = CELL_SIZE * 0.5
-	return BOARD_OFFSET + Vector2(col * CELL_SIZE + CELL_SIZE * 0.5, row * combat_cell_h + combat_cell_h * 0.5)
+	var combat_cell_h: float = _cell_size * 0.5
+	return _board_offset + Vector2(col * _cell_size + _cell_size * 0.5, row * combat_cell_h + combat_cell_h * 0.5)
 
 
 func _cell_to_world(col: int, row: int) -> Vector2:
-	return BOARD_OFFSET + Vector2(col * CELL_SIZE + CELL_SIZE * 0.5, row * CELL_SIZE + CELL_SIZE * 0.5)
+	return _board_offset + Vector2(col * _cell_size + _cell_size * 0.5, row * _cell_size + _cell_size * 0.5)
 
 
 func _world_to_cell(world_pos: Vector2) -> Vector2i:
-	var local: Vector2 = world_pos - BOARD_OFFSET
-	return Vector2i(int(local.x / CELL_SIZE), int(local.y / CELL_SIZE))
+	var local: Vector2 = world_pos - _board_offset
+	return Vector2i(int(local.x / _cell_size), int(local.y / _cell_size))
 
 
 func _is_valid_cell(col: int, row: int) -> bool:
@@ -219,15 +226,15 @@ func _draw_board() -> void:
 
 
 func _draw() -> void:
-	var board_rect := Rect2(BOARD_OFFSET - Vector2(16, 16), Vector2(COLS * CELL_SIZE + 32, ROWS * CELL_SIZE + 32))
+	var board_rect := Rect2(_board_offset - Vector2(16, 16), Vector2(COLS * _cell_size + 32, ROWS * _cell_size + 32))
 	draw_rect(board_rect, Color(0.04, 0.06, 0.09, 0.42), true)
 	draw_rect(board_rect, Color(0.42, 0.52, 0.66, 0.32), false, 2.0)
 	_draw_lane_labels()
 
 	for col in COLS:
 		for row in ROWS:
-			var rect_pos: Vector2 = BOARD_OFFSET + Vector2(col * CELL_SIZE, row * CELL_SIZE)
-			var rect := Rect2(rect_pos, Vector2(CELL_SIZE - 2, CELL_SIZE - 2))
+			var rect_pos: Vector2 = _board_offset + Vector2(col * _cell_size, row * _cell_size)
+			var rect := Rect2(rect_pos, Vector2(_cell_size - 2, _cell_size - 2))
 			var tint: Color = _tile_tint_for(col, row)
 			draw_texture_rect(TILE_TEXTURE, rect, false, tint)
 			draw_rect(rect, Color(0.48, 0.58, 0.72, 0.18), false, 1.5)
@@ -263,13 +270,13 @@ func _tile_tint_for(col: int, row: int) -> Color:
 
 
 func _draw_lane_labels() -> void:
-	var backline_pos := BOARD_OFFSET + Vector2(8, 8)
-	var frontline_pos := BOARD_OFFSET + Vector2(8, float((ROWS - 1) * CELL_SIZE) + 8)
+	var backline_pos := _board_offset + Vector2(8, 8)
+	var frontline_pos := _board_offset + Vector2(8, float((ROWS - 1) * _cell_size) + 8)
 	var font: Font = ThemeDB.fallback_font
 	if font == null:
 		return
-	draw_string(font, backline_pos, "Backline", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.72, 0.82, 0.95, 0.78))
-	draw_string(font, frontline_pos, "Frontline", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.90, 0.84, 0.66, 0.78))
+	draw_string(font, backline_pos, "Backline", HORIZONTAL_ALIGNMENT_LEFT, -1, _label_font_size, Color(0.72, 0.82, 0.95, 0.78))
+	draw_string(font, frontline_pos, "Frontline", HORIZONTAL_ALIGNMENT_LEFT, -1, _label_font_size, Color(0.90, 0.84, 0.66, 0.78))
 
 
 func _bind_scene_peers() -> void:
@@ -281,6 +288,7 @@ func _bind_scene_peers() -> void:
 
 	_bench_ui = root.get_node_or_null("BenchUI")
 	_hud_ui = root.get_node_or_null("HudUI")
+	_shop_ui = root.get_node_or_null("ShopUI")
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
@@ -294,6 +302,28 @@ func _bind_scene_peers() -> void:
 			unit_sent_to_bench.connect(_on_unit_sent_to_bench)
 
 	_on_phase_changed(PREP_PHASE)
+
+
+func _refresh_layout() -> void:
+	var view_size: Vector2 = get_viewport_rect().size
+	var left_margin: float = clampf(view_size.x * 0.11, 96.0, 160.0)
+	var right_margin: float = clampf(view_size.x * 0.03, 18.0, 36.0)
+	var top_margin: float = 88.0
+	var bottom_limit: float = view_size.y - 260.0
+	if _bench_ui != null:
+		bottom_limit = minf(bottom_limit, _bench_ui.position.y - 18.0)
+	elif _shop_ui != null:
+		bottom_limit = minf(bottom_limit, _shop_ui.position.y - 92.0)
+	var usable_w: float = maxf(280.0, view_size.x - left_margin - right_margin)
+	var usable_h: float = maxf(220.0, bottom_limit - top_margin)
+	_cell_size = clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 52.0, 112.0)
+	var board_w: float = float(COLS) * _cell_size
+	var board_h: float = float(ROWS) * _cell_size
+	_board_offset = Vector2(left_margin + (usable_w - board_w) * 0.5, top_margin + (usable_h - board_h) * 0.5)
+	_label_font_size = int(clampf(_cell_size * 0.15, 10.0, 14.0))
+	for unit in get_all_placed_units():
+		unit.position = _cell_to_world(unit.board_position.x, unit.board_position.y)
+	queue_redraw()
 
 
 func _on_phase_changed(phase: int) -> void:

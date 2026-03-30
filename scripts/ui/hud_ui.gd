@@ -36,6 +36,11 @@ var _shop_ui = null
 var _phase: int = PREP_PHASE
 var _touch_hints_enabled: bool = true
 var _selected_item_index: int = -1
+var _top_bar: ColorRect = null
+var _bottom_line: ColorRect = null
+var _heart_label: Label = null
+var _trait_panel_bg: ColorRect = null
+var _trait_title: Label = null
 
 signal skip_prep_pressed()
 signal restart_requested()
@@ -43,8 +48,15 @@ signal menu_requested()
 
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	custom_minimum_size = Vector2(1280, 50)
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
+	custom_minimum_size = Vector2.ZERO
 	_touch_hints_enabled = bool(UISettings.load_settings().get(UISettings.KEY_TOUCH_HINTS, true))
 	_build_top_bar()
 	_build_overview()
@@ -60,27 +72,27 @@ func _ready() -> void:
 	GameManager.gold_changed.connect(_on_gold_changed)
 	GameManager.inventory_changed.connect(_on_inventory_changed)
 	GameManager.run_finished.connect(_on_run_finished)
+	if not resized.is_connected(_refresh_layout):
+		resized.connect(_refresh_layout)
+	_refresh_layout()
 
 
 func _build_top_bar() -> void:
-	var bar := ColorRect.new()
-	bar.color = Color(0.06, 0.07, 0.10, 0.92)
-	bar.custom_minimum_size = Vector2(1280, 50)
-	add_child(bar)
+	_top_bar = ColorRect.new()
+	_top_bar.color = Color(0.06, 0.07, 0.10, 0.92)
+	add_child(_top_bar)
 
-	var bottom_line := ColorRect.new()
-	bottom_line.color = Color(0.3, 0.35, 0.45)
-	bottom_line.custom_minimum_size = Vector2(1280, 2)
-	bottom_line.position = Vector2(0, 48)
-	add_child(bottom_line)
+	_bottom_line = ColorRect.new()
+	_bottom_line.color = Color(0.3, 0.35, 0.45)
+	add_child(_bottom_line)
 
 	# ♥ Health
-	var heart := Label.new()
-	heart.text = "♥"
-	heart.position = Vector2(16, 10)
-	heart.add_theme_font_size_override("font_size", 22)
-	heart.add_theme_color_override("font_color", Color(0.9, 0.2, 0.25))
-	add_child(heart)
+	_heart_label = Label.new()
+	_heart_label.text = "♥"
+	_heart_label.position = Vector2(16, 10)
+	_heart_label.add_theme_font_size_override("font_size", 22)
+	_heart_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.25))
+	add_child(_heart_label)
 
 	_health_label = Label.new()
 	_health_label.text = "100"
@@ -200,20 +212,18 @@ func _build_stage_tracker() -> void:
 
 func _build_trait_panel() -> void:
 	# Left side panel: shows active traits
-	var panel_bg := ColorRect.new()
-	panel_bg.color = Color(0.07, 0.08, 0.11, 0.88)
-	panel_bg.custom_minimum_size = Vector2(140, 540)
-	panel_bg.position = Vector2(0, 50)
-	add_child(panel_bg)
+	_trait_panel_bg = ColorRect.new()
+	_trait_panel_bg.color = Color(0.07, 0.08, 0.11, 0.88)
+	add_child(_trait_panel_bg)
 
-	var title := Label.new()
-	title.text = "SYNERGIES"
-	title.position = Vector2(4, 56)
-	title.custom_minimum_size = Vector2(132, 18)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 11)
-	title.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
-	add_child(title)
+	_trait_title = Label.new()
+	_trait_title.text = "SYNERGIES"
+	_trait_title.position = Vector2(4, 56)
+	_trait_title.custom_minimum_size = Vector2(132, 18)
+	_trait_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_trait_title.add_theme_font_size_override("font_size", 11)
+	_trait_title.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
+	add_child(_trait_title)
 
 	# We'll populate trait rows dynamically when synergies change
 	var all_traits: Array = []
@@ -339,7 +349,7 @@ func update_synergies(board_units: Array) -> void:
 	var class_counts: Dictionary = {}
 	for unit in board_units:
 		race_counts[unit.race] = race_counts.get(unit.race, 0) + 1
-		class_counts[unit.trait] = class_counts.get(unit.trait, 0) + 1
+		class_counts[unit.trait_id] = class_counts.get(unit.trait_id, 0) + 1
 
 	var all_counts: Dictionary = {}
 	for k in race_counts:
@@ -524,6 +534,78 @@ func _refresh_phase_label() -> void:
 			_phase_label.text = "Result"
 		_:
 			_phase_label.text = "Menu"
+
+
+func _refresh_layout() -> void:
+	var view_size: Vector2 = get_viewport_rect().size
+	var width: float = maxf(640.0, view_size.x)
+	var height: float = maxf(360.0, view_size.y)
+	var compact: bool = width < 980.0
+	var top_h: float = 50.0 if not compact else 58.0
+	var trait_w: float = 140.0 if not compact else 118.0
+	var inventory_x: float = 150.0 if not compact else 108.0
+	var slot_step: float = 32.0 if not compact else 26.0
+	var slot_size: float = 26.0 if not compact else 22.0
+
+	if _top_bar != null:
+		_top_bar.size = Vector2(width, top_h)
+	if _bottom_line != null:
+		_bottom_line.position = Vector2(0.0, top_h - 2.0)
+		_bottom_line.size = Vector2(width, 2.0)
+	if _heart_label != null:
+		_heart_label.position = Vector2(16.0, compact ? 14.0 : 10.0)
+	if _health_label != null:
+		_health_label.position = Vector2(40.0, compact ? 16.0 : 12.0)
+	if _round_label != null:
+		_round_label.position = Vector2(0.0, compact ? 2.0 : 14.0)
+		_round_label.custom_minimum_size = Vector2(width, 22.0)
+	if _skip_btn != null:
+		var button_w: float = 124.0 if not compact else 104.0
+		_skip_btn.position = Vector2(width - button_w - 16.0, compact ? 12.0 : 8.0)
+		_skip_btn.custom_minimum_size = Vector2(button_w, compact ? 36.0 : 34.0)
+		_skip_btn.size = _skip_btn.custom_minimum_size
+	if _team_label != null:
+		_team_label.position = Vector2(width - (220.0 if compact else 300.0), compact ? 6.0 : 12.0)
+	if _bench_label != null:
+		_bench_label.position = Vector2(width - (220.0 if compact else 300.0), compact ? 24.0 : 30.0)
+	if _phase_label != null:
+		_phase_label.position = Vector2(width - (154.0 if compact else 156.0), compact ? 40.0 : 12.0)
+		_phase_label.custom_minimum_size = Vector2(140.0, 22.0)
+	if _result_label != null:
+		_result_label.position = Vector2((width - minf(360.0, width - 180.0)) * 0.5, top_h + 2.0)
+		_result_label.custom_minimum_size = Vector2(minf(360.0, width - 180.0), 24.0)
+	if _inventory_label != null:
+		_inventory_label.position = Vector2(inventory_x, compact ? 8.0 : 12.0)
+	for i in _inventory_slot_bgs.size():
+		var x: float = inventory_x + 48.0 + i * slot_step
+		_inventory_slot_bgs[i].position = Vector2(x, 9.0)
+		_inventory_slot_bgs[i].custom_minimum_size = Vector2(slot_size, slot_size)
+		_inventory_slots[i].position = Vector2(x + 1.0, 10.0)
+		_inventory_slots[i].custom_minimum_size = Vector2(slot_size - 2.0, slot_size - 2.0)
+		_inventory_buttons[i].position = Vector2(x, 9.0)
+		_inventory_buttons[i].custom_minimum_size = Vector2(slot_size, slot_size)
+
+	var tracker_width: float = 12.0 * 14.0 + 11.0 * 6.0
+	var tracker_start_x: float = (width - tracker_width) * 0.5 - (compact ? 80.0 : 60.0)
+	for i in _stage_indicators.size():
+		_stage_indicators[i].position = Vector2(tracker_start_x + i * 20.0, compact ? 36.0 : 18.0)
+
+	if _trait_panel_bg != null:
+		_trait_panel_bg.position = Vector2.ZERO
+		_trait_panel_bg.size = Vector2(trait_w, maxf(280.0, height - 200.0 - 92.0))
+	if _trait_title != null:
+		_trait_title.position = Vector2(4.0, top_h + 6.0)
+		_trait_title.custom_minimum_size = Vector2(trait_w - 8.0, 18.0)
+
+	var row_y: float = top_h + 28.0
+	for trait_id in _trait_entries:
+		var e: Dictionary = _trait_entries[trait_id]
+		(e["bg"] as ColorRect).position = Vector2(6.0, row_y)
+		(e["bg"] as ColorRect).custom_minimum_size = Vector2(trait_w - 12.0, 24.0)
+		(e["icon"] as TextureRect).position = Vector2(8.0, row_y + 2.0)
+		(e["label"] as Label).position = Vector2(32.0, row_y + 4.0)
+		(e["count"] as Label).position = Vector2(trait_w - 24.0, row_y + 4.0)
+		row_y += 28.0
 
 
 func _refresh_overview() -> void:

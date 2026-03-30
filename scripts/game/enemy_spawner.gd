@@ -114,10 +114,10 @@ func _instantiate_unit(unit_data: Dictionary):
 		if unit_script == null:
 			push_error("EnemySpawner: could not load unit script")
 			return null
-		var unit = unit_script.new()
-		unit.init(unit_data)
-		add_child(unit)
-		return unit
+		var spawned_unit = unit_script.new()
+		spawned_unit.init(unit_data)
+		add_child(spawned_unit)
+		return spawned_unit
 
 	var unit = _unit_scene.instantiate()
 	if unit == null:
