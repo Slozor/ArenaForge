@@ -1,13 +1,11 @@
 extends Node2D
 
-class_name Board
-
 const COLS: int = 7
 const ROWS: int = 4  # 4 rows for player, 4 mirrored for enemy
 const CELL_SIZE: float = 96.0
 
-var player_units: Array[Unit] = []
-var enemy_units: Array[Unit] = []
+var player_units: Array = []
+var enemy_units: Array = []
 var grid: Array = []  # 2D array [col][row] -> Unit or null
 
 
@@ -24,7 +22,7 @@ func _initialize_grid() -> void:
 			grid[col][row] = null
 
 
-func place_unit(unit: Unit, col: int, row: int) -> bool:
+func place_unit(unit, col: int, row: int) -> bool:
 	if not _is_valid_cell(col, row):
 		return false
 	if grid[col][row] != null:
@@ -37,10 +35,10 @@ func place_unit(unit: Unit, col: int, row: int) -> bool:
 	return true
 
 
-func remove_unit(col: int, row: int) -> Unit:
+func remove_unit(col: int, row: int):
 	if not _is_valid_cell(col, row):
 		return null
-	var unit: Unit = grid[col][row]
+	var unit = grid[col][row]
 	if unit == null:
 		return null
 	grid[col][row] = null

@@ -59,7 +59,7 @@ static func apply_synergies(board_units: Array, active_synergies: Array) -> void
 
 		for unit in board_units:
 			var matches: bool = (synergy_type == "race" and unit.race == synergy_id) \
-				or (synergy_type == "class" and unit.trait == synergy_id)
+			or (synergy_type == "class" and unit.trait == synergy_id)
 
 			match effect:
 				"max_hp_bonus_percent":

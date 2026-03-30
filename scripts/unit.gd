@@ -1,7 +1,5 @@
 extends Node2D
 
-class_name Unit
-
 enum UnitState {
 	IDLE,
 	MOVING,
@@ -22,11 +20,11 @@ enum UnitState {
 var current_health: int = 0
 var current_state: UnitState = UnitState.IDLE
 var star_level: int = 1  # 1, 2, or 3 stars
-var target: Unit = null
+var target = null
 var board_position: Vector2i = Vector2i(-1, -1)
 var is_on_bench: bool = true
 
-signal died(unit: Unit)
+signal died(unit)
 signal health_changed(current: int, maximum: int)
 
 

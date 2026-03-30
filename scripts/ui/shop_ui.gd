@@ -13,6 +13,7 @@ const BUTTON_H: float = 52.0
 const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
+const UNIT_CARD_SCRIPT_PATH: String = "res://scripts/ui/unit_card.gd"
 
 var _cards: Array = []
 var _reroll_btn: Button = null
@@ -130,6 +131,8 @@ func _build_cards() -> void:
 
 	for i in 5:
 		var card = _make_unit_card()
+		if card == null:
+			continue
 		card.position = Vector2(start_x + i * (CARD_W + CARD_GAP), 30)
 		add_child(card)
 		_cards.append(card)
@@ -163,7 +166,11 @@ func _build_buttons() -> void:
 
 func _make_unit_card():
 	# Inline card scene construction
-	var card := UnitCard.new()
+	var card_script: Script = load(UNIT_CARD_SCRIPT_PATH)
+	if card_script == null:
+		push_error("ShopUI: could not load %s" % UNIT_CARD_SCRIPT_PATH)
+		return null
+	var card = card_script.new()
 	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
 
 	var portrait := TextureRect.new()
