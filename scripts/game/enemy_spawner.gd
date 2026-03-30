@@ -10,6 +10,7 @@ const ENEMY_ROWS: Array = [7, 6, 5, 4]
 
 # Path to the Unit scene used for instantiation.
 const UNIT_SCENE_PATH: String = "res://scenes/units/unit.tscn"
+const UNIT_SCRIPT_PATH: String = "res://scripts/units/unit.gd"
 
 var _unit_scene: PackedScene = null
 
@@ -109,7 +110,11 @@ func _spread_columns(count: int, total_cols: int) -> Array[int]:
 
 func _instantiate_unit(unit_data: Dictionary):
 	if _unit_scene == null:
-		var unit = Unit.new()
+		var unit_script: Script = load(UNIT_SCRIPT_PATH)
+		if unit_script == null:
+			push_error("EnemySpawner: could not load unit script")
+			return null
+		var unit = unit_script.new()
 		unit.init(unit_data)
 		add_child(unit)
 		return unit

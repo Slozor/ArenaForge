@@ -152,10 +152,14 @@ func equip_item(item_id: String, item_data: Dictionary) -> void:
 	var effect: String = item_data.get("effect", "")
 	var value: float = item_data.get("value", 0.0)
 	match effect:
-		"attack_damage_flat":  item_attack_damage = int(value)
-		"armor_flat":          item_armor = int(value)
-		"max_hp_flat":         item_max_hp = int(value)
-		"attack_speed_flat":   item_attack_speed = value
+		"attack_damage_flat":
+			item_attack_damage = int(value)
+		"armor_flat":
+			item_armor = int(value)
+		"max_hp_flat":
+			item_max_hp = int(value)
+		"attack_speed_flat":
+			item_attack_speed = value
 
 
 func upgrade_to_star(level: int) -> void:
@@ -198,7 +202,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var body_color: Color = _race_color()
 	var accent_color: Color = _trait_color()
-	var shadow_rect := Rect2(Vector2(-BODY_RADIUS, BODY_RADIUS * 0.65), Vector2(BODY_RADIUS * 2.0, 10))
+	var shadow_rect: Rect2 = Rect2(Vector2(-BODY_RADIUS, BODY_RADIUS * 0.65), Vector2(BODY_RADIUS * 2.0, 10))
 	draw_ellipse(shadow_rect.position + shadow_rect.size * 0.5, shadow_rect.size * 0.5, Color(0, 0, 0, 0.28))
 	draw_circle(Vector2.ZERO, BODY_RADIUS + 3.0, body_color.darkened(0.55))
 	draw_circle(Vector2.ZERO, BODY_RADIUS, body_color)
@@ -207,7 +211,7 @@ func _draw() -> void:
 
 	if get_max_health() > 0:
 		var hp_ratio: float = clampf(float(current_health) / float(get_max_health()), 0.0, 1.0)
-		var bar_rect := Rect2(Vector2(-18, -30), Vector2(36, 5))
+		var bar_rect: Rect2 = Rect2(Vector2(-18, -30), Vector2(36, 5))
 		draw_rect(bar_rect, Color(0.05, 0.08, 0.12, 0.9), true)
 		draw_rect(Rect2(bar_rect.position, Vector2(bar_rect.size.x * hp_ratio, bar_rect.size.y)), Color(0.35, 0.95, 0.50, 0.95), true)
 
@@ -219,7 +223,8 @@ func _draw() -> void:
 	if _slow_strength > 0.0:
 		draw_circle(Vector2.ZERO, BODY_RADIUS + 8.0, Color(0.45, 0.72, 1.0, 0.16 * _slow_strength))
 	if _flash_strength > 0.0:
-		draw_circle(Vector2.ZERO, BODY_RADIUS + 4.0, _flash_color.with_alpha(0.55 * _flash_strength))
+		var flash_color: Color = Color(_flash_color.r, _flash_color.g, _flash_color.b, 0.55 * _flash_strength)
+		draw_circle(Vector2.ZERO, BODY_RADIUS + 4.0, flash_color)
 
 
 func play_attack_pulse() -> void:
@@ -252,7 +257,7 @@ func set_slow_visual(duration_scale: float = 1.0) -> void:
 
 func play_death_pop() -> void:
 	_is_dying = true
-	var tween := create_tween()
+	var tween: Tween = create_tween()
 	tween.tween_property(self, "scale", Vector2.ONE * 1.2, 0.08)
 	tween.tween_property(self, "modulate", Color(1.0, 0.35, 0.35, 0.0), 0.22)
 
