@@ -319,7 +319,7 @@ func _select_reward_target(units: Array):
 	var best = null
 	var best_score: int = -1
 	for unit in units:
-		if unit == null or unit.state == Unit.State.DEAD:
+		if unit == null or int(unit.state) == 3:
 			continue
 		if unit.equipped_item != "":
 			continue
