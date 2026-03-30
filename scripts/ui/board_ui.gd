@@ -127,6 +127,7 @@ func _place_selected_unit(to_cell: Vector2i) -> void:
 	grid[to_cell.x][to_cell.y] = selected_unit
 	selected_unit.board_position = to_cell
 	selected_unit.is_on_bench = false
+	selected_unit.visible = true
 	selected_unit.position = _cell_to_world(to_cell.x, to_cell.y)
 
 	if selected_from_bench:
@@ -147,6 +148,7 @@ func _swap_units(to_cell: Vector2i) -> void:
 	if selected_from_bench:
 		other_unit.is_on_bench = true
 		other_unit.board_position = Vector2i(-1, -1)
+		other_unit.visible = false
 		unit_sent_to_bench.emit(other_unit)
 		unit_placed.emit(selected_unit, to_cell.x, to_cell.y)
 	else:
@@ -165,6 +167,7 @@ func _remove_from_board(cell: Vector2i) -> void:
 			grid[cell.x][cell.y] = null
 			unit.is_on_bench = true
 			unit.board_position = Vector2i(-1, -1)
+			unit.visible = false
 
 
 func _clear_selection() -> void:
@@ -306,21 +309,21 @@ func _bind_scene_peers() -> void:
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var left_margin: float = clampf(view_size.x * 0.11, 96.0, 160.0)
-	var right_margin: float = clampf(view_size.x * 0.03, 18.0, 36.0)
-	var top_margin: float = 88.0
-	var bottom_limit: float = view_size.y - 260.0
+	var left_margin: float = clampf(view_size.x * 0.085, 86.0, 132.0)
+	var right_margin: float = clampf(view_size.x * 0.025, 14.0, 26.0)
+	var top_margin: float = 74.0
+	var bottom_limit: float = view_size.y - 232.0
 	if _bench_ui != null:
-		bottom_limit = minf(bottom_limit, _bench_ui.position.y - 18.0)
+		bottom_limit = minf(bottom_limit, _bench_ui.position.y - 8.0)
 	elif _shop_ui != null:
-		bottom_limit = minf(bottom_limit, _shop_ui.position.y - 92.0)
+		bottom_limit = minf(bottom_limit, _shop_ui.position.y - 64.0)
 	var usable_w: float = maxf(280.0, view_size.x - left_margin - right_margin)
 	var usable_h: float = maxf(220.0, bottom_limit - top_margin)
-	_cell_size = clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 52.0, 112.0)
+	_cell_size = clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 56.0, 122.0)
 	var board_w: float = float(COLS) * _cell_size
 	var board_h: float = float(ROWS) * _cell_size
 	_board_offset = Vector2(left_margin + (usable_w - board_w) * 0.5, top_margin + (usable_h - board_h) * 0.5)
-	_label_font_size = int(clampf(_cell_size * 0.15, 10.0, 14.0))
+	_label_font_size = int(clampf(_cell_size * 0.14, 10.0, 14.0))
 	for unit in get_all_placed_units():
 		unit.position = _cell_to_world(unit.board_position.x, unit.board_position.y)
 	queue_redraw()

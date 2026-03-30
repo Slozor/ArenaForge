@@ -28,22 +28,25 @@ script = ExtResource("2")
 [node name="HudUI" type="Control" parent="."]
 script = ExtResource("1")
 layout_mode = 3
-anchors_preset = 10
+anchors_preset = 15
+anchor_bottom = 1.0
 anchor_right = 1.0
-offset_bottom = 440
+offset_bottom = 0
 
 [node name="BenchUI" type="Control" parent="."]
 script = ExtResource("3")
 layout_mode = 3
-anchors_preset = 0
-offset_top = 435
-offset_right = 1280
-offset_bottom = 515
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0
+offset_bottom = 0
 
 [node name="ShopUI" type="Control" parent="."]
 script = ExtResource("4")
 layout_mode = 3
-anchors_preset = 0
-offset_top = 515
-offset_right = 1280
-offset_bottom = 720
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0
+offset_bottom = 0

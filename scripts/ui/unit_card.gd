@@ -85,6 +85,8 @@ func _refresh_display() -> void:
 	var trait_name: String = unit_data.get("trait", "")
 	_race_label.text = race.capitalize()
 	_trait_label.text = trait_name.capitalize()
+	tooltip_text = DataManager.get_unit_tooltip(unit_id)
+	_tap_area.tooltip_text = tooltip_text
 
 	_overlay.color = Color(0, 0, 0, 0)
 	_tap_area.disabled = false
@@ -100,6 +102,8 @@ func _show_empty() -> void:
 	_trait_label.text = ""
 	_overlay.color = Color(0, 0, 0, 0)
 	_tap_area.disabled = true
+	tooltip_text = ""
+	_tap_area.tooltip_text = ""
 	queue_redraw()
 
 

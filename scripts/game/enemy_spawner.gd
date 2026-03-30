@@ -4,9 +4,9 @@ class_name EnemySpawner
 
 # Full combat board dimensions
 const COLS: int = 7
-# Enemy occupies rows 4-7 of the full 7x8 board.
-# Back rows are filled first: 7, 6, 5, 4.
-const ENEMY_ROWS: Array = [7, 6, 5, 4]
+# Enemy occupies rows 0-3 of the full 7x8 board.
+# Back rows are filled first from the enemy side: 0, 1, 2, 3.
+const ENEMY_ROWS: Array = [0, 1, 2, 3]
 
 # Path to the Unit scene used for instantiation.
 const UNIT_SCENE_PATH: String = "res://scenes/units/unit.tscn"
@@ -20,8 +20,8 @@ func _ready() -> void:
 
 
 # Returns an array with all enemy units placed on the enemy side of the
-# board (rows 4-7, back rows first). Board positions use the full 7x8 coordinate
-# space where row 0 is the player's front row and row 7 is the enemy's back row.
+# board (rows 0-3, back rows first). Board positions use the full 7x8 coordinate
+# space where row 0 is the enemy back row and row 7 is the player's back row.
 func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array:
 	var round_entry: Dictionary = get_round_data(round_num)
 	if round_entry.is_empty():
@@ -73,7 +73,7 @@ func get_opponent_count(round_num: int) -> int:
 # ── Position layout ───────────────────────────────────────────────────────────
 
 # Generates board positions for `count` units. Units are placed in back rows
-# first (row 7 → 6 → 5 → 4), spread evenly across columns.
+# first (row 0 → 1 → 2 → 3), spread evenly across columns.
 func _build_positions(count: int) -> Array[Vector2i]:
 	var positions: Array[Vector2i] = []
 	var remaining: int = count

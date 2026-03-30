@@ -97,6 +97,7 @@ func _enter_combat() -> void:
 	if hud_ui != null:
 		hud_ui.set_skip_button_visible(false)
 	_store_player_prep_positions()
+	_prepare_player_units_for_combat()
 	_apply_synergies_to_board()
 	_spawn_enemy_team()
 	_position_units_for_combat(_get_player_units())
@@ -331,8 +332,15 @@ func _restore_player_prep_positions() -> void:
 			continue
 		var prep_pos: Vector2i = _player_prep_positions[instance_id]
 		unit.board_position = prep_pos
+		unit.visible = true
 		unit.position = board_ui.cell_to_world(prep_pos.x, prep_pos.y)
 	_player_prep_positions.clear()
+
+
+func _prepare_player_units_for_combat() -> void:
+	for unit in _get_player_units():
+		unit.board_position = Vector2i(unit.board_position.x, unit.board_position.y + 4)
+		unit.visible = true
 
 
 func _position_units_for_combat(units: Array) -> void:

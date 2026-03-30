@@ -6,12 +6,16 @@ const SETTINGS_SCENE: String = "res://scenes/settings_menu.tscn"
 var _start_button: Button = null
 var _settings_button: Button = null
 var _quit_button: Button = null
+var _panel: PanelContainer = null
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UISettings.apply_audio(UISettings.load_settings())
 	_build_menu()
+	if not resized.is_connected(_refresh_layout):
+		resized.connect(_refresh_layout)
+	_refresh_layout()
 
 
 func _on_start_pressed() -> void:
@@ -41,16 +45,16 @@ func _build_menu() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(460, 420)
-	center.add_child(panel)
+	_panel = PanelContainer.new()
+	_panel.custom_minimum_size = Vector2(460, 420)
+	center.add_child(_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 24)
 	margin.add_theme_constant_override("margin_top", 24)
 	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_bottom", 24)
-	panel.add_child(margin)
+	_panel.add_child(margin)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
@@ -108,3 +112,9 @@ func _make_menu_button(text: String) -> Button:
 	button.add_theme_stylebox_override("hover", hover_style)
 	button.add_theme_font_size_override("font_size", 15)
 	return button
+
+
+func _refresh_layout() -> void:
+	var size_v: Vector2 = get_viewport_rect().size
+	if _panel != null:
+		_panel.custom_minimum_size = Vector2(clampf(size_v.x * 0.36, 320.0, 520.0), clampf(size_v.y * 0.54, 340.0, 520.0))

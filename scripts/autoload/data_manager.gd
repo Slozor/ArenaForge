@@ -64,6 +64,13 @@ func get_class_data(class_id: String) -> Dictionary:
 	return classes.get(class_id, {})
 
 
+func get_trait_data(trait_id: String) -> Dictionary:
+	var race_data: Dictionary = get_race(trait_id)
+	if not race_data.is_empty():
+		return race_data
+	return get_class_data(trait_id)
+
+
 func get_item(item_id: String) -> Dictionary:
 	return items.get(item_id, {})
 
@@ -121,6 +128,73 @@ func get_round_reward(round_num: int) -> Dictionary:
 
 func get_all_round_numbers() -> Array:
 	return rounds.keys()
+
+
+func get_unit_tooltip(unit_id: String) -> String:
+	var unit_data: Dictionary = get_unit(unit_id)
+	if unit_data.is_empty():
+		return unit_id
+	var stats: Dictionary = unit_data.get("stats", {})
+	var race_id: String = str(unit_data.get("race", ""))
+	var trait_id: String = str(unit_data.get("trait", ""))
+	var race_name: String = get_race(race_id).get("name", race_id.capitalize())
+	var trait_name: String = get_class_data(trait_id).get("name", trait_id.capitalize())
+	var passive_id: String = str(unit_data.get("passive", ""))
+	var passive_label: String = passive_id.replace("_", " ").capitalize()
+	return "%s\n%s / %s\nCost: %s\nHP: %s  AD: %s  AS: %s\nRange: %s  Armor: %s\nPassive: %s" % [
+		unit_data.get("name", unit_id),
+		race_name,
+		trait_name,
+		str(unit_data.get("cost", 1)),
+		str(stats.get("health", 0)),
+		str(stats.get("attack_damage", 0)),
+		str(stats.get("attack_speed", 0.0)),
+		str(stats.get("attack_range", 0)),
+		str(stats.get("armor", 0)),
+		passive_label
+	]
+
+
+func get_trait_tooltip(trait_id: String) -> String:
+	var trait_data: Dictionary = get_trait_data(trait_id)
+	if trait_data.is_empty():
+		return trait_id.capitalize()
+	var lines: Array[String] = []
+	lines.append(str(trait_data.get("name", trait_id.capitalize())))
+	lines.append(str(trait_data.get("description", "")))
+	for threshold in trait_data.get("thresholds", []):
+		var count: String = str(threshold.get("count", 0))
+		var label: String = str(threshold.get("label", count + " " + str(trait_data.get("name", trait_id.capitalize()))))
+		lines.append("%s: %s" % [label, _format_threshold_effect(threshold)])
+	return "\n".join(lines)
+
+
+func _format_threshold_effect(threshold: Dictionary) -> String:
+	var effect: String = str(threshold.get("effect", ""))
+	var value: Variant = threshold.get("value", 0)
+	match effect:
+		"gold_per_round":
+			return "+%s gold per round" % str(value)
+		"attack_speed_bonus":
+			return "+%s%% attack speed" % str(int(round(float(value) * 100.0)))
+		"armor_bonus_percent":
+			return "+%s%% armor" % str(int(round(float(value) * 100.0)))
+		"max_hp_bonus_percent":
+			return "+%s%% max HP" % str(int(round(float(value) * 100.0)))
+		"damage_bonus_percent":
+			return "+%s%% damage" % str(int(round(float(value) * 100.0)))
+		"attack_range_bonus":
+			return "+%s range" % str(value)
+		"team_shield_percent":
+			return "Shield allies for %s%% max HP" % str(int(round(float(value) * 100.0)))
+		"revive_once":
+			return "Revive once at %s%% HP" % str(int(round(float(value) * 100.0)))
+		"burn_on_hit":
+			return "Burn for %s DPS" % str(value)
+		"leap_to_weakest":
+			return "Leap to the weakest enemy"
+		_:
+			return str(effect).replace("_", " ").capitalize()
 
 
 func _read_json(path: String) -> Dictionary:

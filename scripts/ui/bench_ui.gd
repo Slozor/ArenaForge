@@ -39,6 +39,7 @@ func _ready() -> void:
 	anchor_top = 1.0
 	anchor_right = 1.0
 	anchor_bottom = 1.0
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	offset_left = 0.0
 	offset_top = -(SLOT_SIZE + 34.0)
 	offset_right = 0.0
@@ -59,10 +60,12 @@ func _build_background() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.08, 0.10, 0.13, 0.90)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	_background_line = ColorRect.new()
 	_background_line.color = Color(0.3, 0.35, 0.45)
+	_background_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_background_line)
 
 
@@ -129,6 +132,7 @@ func _make_slot(index: int) -> Control:
 	border.name = "Border"
 	border.color = Color(0, 0, 0, 0)
 	border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	container.add_child(border)
 
 	var name_lbl := Label.new()
@@ -167,7 +171,8 @@ func _make_slot(index: int) -> Control:
 
 
 func _refresh_layout() -> void:
-	var width: float = maxf(640.0, get_viewport_rect().size.x)
+	var view_size: Vector2 = get_viewport_rect().size
+	var width: float = maxf(640.0, view_size.x)
 	var compact: bool = width < 980.0
 	var slot_scale: float = clampf((width - 44.0) / (BENCH_SLOTS * SLOT_SIZE + (BENCH_SLOTS - 1) * SLOT_GAP), 0.62, 1.0)
 	if compact:
@@ -176,8 +181,8 @@ func _refresh_layout() -> void:
 	var gap: float = maxf(4.0, SLOT_GAP * slot_scale)
 	var header_h: float = 24.0
 	var bench_h: float = slot_size + header_h + 14.0
-	offset_top = -bench_h
-	offset_bottom = -200.0
+	position = Vector2(0.0, view_size.y - 200.0 - bench_h)
+	size = Vector2(width, bench_h)
 
 	if _background_line != null:
 		_background_line.size = Vector2(width, 2.0)
@@ -188,7 +193,7 @@ func _refresh_layout() -> void:
 	if _phase_label != null:
 		_phase_label.position = Vector2(190.0, 6.0)
 	if _hint_label != null:
-		_hint_label.position = Vector2(width * 0.42, 6.0)
+		_hint_label.position = Vector2(width * 0.36, 6.0)
 		_hint_label.visible = _touch_hints_enabled and not compact
 
 	var total_w: float = BENCH_SLOTS * slot_size + (BENCH_SLOTS - 1) * gap
@@ -215,9 +220,12 @@ func _refresh_layout() -> void:
 func add_unit(unit) -> bool:
 	var slot: int = _find_free_slot()
 	if slot != -1:
+		if unit.get_parent() == null and _board_ui != null:
+			_board_ui.add_child(unit)
 		_units[slot] = unit
 		unit.is_on_bench = true
 		unit.board_position = Vector2i(-1, -1)
+		unit.visible = false
 		_refresh_slot(slot)
 		_check_merge(unit)
 		_refresh_overview()
@@ -336,6 +344,7 @@ func on_unit_placed_on_board(unit) -> void:
 	if idx != -1:
 		_units[idx] = null
 		_refresh_slot(idx)
+	unit.visible = true
 	_selected_slot = -1
 	_refresh_overview()
 
@@ -415,6 +424,8 @@ func _sell_unit(slot_idx: int) -> void:
 	GameManager.add_gold(sell_value)
 	unit_sold.emit(unit)
 	_units[slot_idx] = null
+	if is_instance_valid(unit):
+		unit.queue_free()
 	_refresh_slot(slot_idx)
 	_selected_slot = -1
 	_refresh_overview()
@@ -430,6 +441,7 @@ func _refresh_slot(index: int) -> void:
 	var name_lbl: Label = slot.get_node("NameLabel") as Label
 	var star_lbl: Label = slot.get_node("StarLabel") as Label
 	var sell_lbl: Label = slot.get_node("SellLabel") as Label
+	var tap_btn: Button = slot.get_node("TapArea") as Button
 
 	if unit == null:
 		bg.modulate = Color(0.66, 0.74, 0.86, 0.42)
@@ -437,6 +449,9 @@ func _refresh_slot(index: int) -> void:
 		name_lbl.text = ""
 		star_lbl.text = ""
 		sell_lbl.text = ""
+		slot.tooltip_text = ""
+		if tap_btn != null:
+			tap_btn.tooltip_text = ""
 		return
 
 	var cost: int = unit.cost
@@ -446,6 +461,10 @@ func _refresh_slot(index: int) -> void:
 	name_lbl.text = unit.unit_name
 	star_lbl.text = "★" if unit.star_level == 2 else ""
 	sell_lbl.text = "%dg" % (cost * unit.star_level)
+	var tooltip: String = DataManager.get_unit_tooltip(unit.unit_id)
+	slot.tooltip_text = tooltip
+	if tap_btn != null:
+		tap_btn.tooltip_text = tooltip
 
 
 func _set_slot_selected(index: int, selected: bool) -> void:
@@ -521,9 +540,9 @@ func _refresh_overview() -> void:
 	if _count_label != null:
 		_count_label.text = "%d/%d" % [get_unit_count(), BENCH_SLOTS]
 	if _phase_label != null:
-		_phase_label.text = "Tap a bench unit, then tap the board. Tap again to sell."
+		_phase_label.text = "Select a unit, then place it."
 		if not _interaction_enabled:
 			_phase_label.text = "Bench locked during combat."
 	if _hint_label != null:
 		_hint_label.visible = _touch_hints_enabled and size.x >= 980.0
-		_hint_label.text = "Sell: tap selected unit again. Move back: tap empty space."
+		_hint_label.text = "Tap again to sell. Tap outside the board to return."

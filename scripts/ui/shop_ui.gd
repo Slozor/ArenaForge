@@ -40,6 +40,7 @@ func _ready() -> void:
 	anchor_top = 1.0
 	anchor_right = 1.0
 	anchor_bottom = 1.0
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	offset_left = 0.0
 	offset_top = -SHOP_HEIGHT
 	offset_right = 0.0
@@ -70,12 +71,14 @@ func _build_background() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.07, 0.08, 0.11, 0.95)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	# Top border line
 	_background_line = ColorRect.new()
 	_background_line.color = Color(0.3, 0.35, 0.45)
 	_background_line.position = Vector2.ZERO
+	_background_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_background_line)
 
 
@@ -211,6 +214,7 @@ func _make_unit_card():
 	overlay.name = "Overlay"
 	overlay.color = Color(0, 0, 0, 0)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(overlay)
 
 	var tap := Button.new()
@@ -240,7 +244,10 @@ func _make_button(text: String, color: Color) -> Button:
 
 
 func _refresh_layout() -> void:
-	var width: float = maxf(640.0, get_viewport_rect().size.x)
+	var view_size: Vector2 = get_viewport_rect().size
+	var width: float = maxf(640.0, view_size.x)
+	position = Vector2(0.0, view_size.y - SHOP_HEIGHT)
+	size = Vector2(width, SHOP_HEIGHT)
 	var compact: bool = width < 980.0
 	var card_scale: float = clampf((width - 220.0) / (5.0 * CARD_W + 4.0 * CARD_GAP), 0.58, 1.0)
 	if compact:
@@ -253,9 +260,9 @@ func _refresh_layout() -> void:
 	var side_pad: float = clampf(width * 0.02, 12.0, 24.0)
 	var cards_total_w: float = 5.0 * card_w + 4.0 * gap
 	var cards_start_x: float = maxf(side_pad, (width - cards_total_w - button_w - 16.0 - side_pad) * 0.5)
-	var cards_y: float = compact ? 44.0 : 30.0
+	var cards_y: float = 44.0 if compact else 30.0
 	var buttons_x: float = minf(width - button_w - side_pad, cards_start_x + cards_total_w + 12.0)
-	var button_gap: float = compact ? 6.0 : 8.0
+	var button_gap: float = 6.0 if compact else 8.0
 
 	if _background_line != null:
 		_background_line.size = Vector2(width, 2.0)
@@ -279,12 +286,15 @@ func _refresh_layout() -> void:
 	if _reroll_btn != null:
 		_reroll_btn.position = Vector2(buttons_x, cards_y)
 		_reroll_btn.custom_minimum_size = Vector2(button_w, button_h)
+		_reroll_btn.size = Vector2(button_w, button_h)
 	if _xp_btn != null:
 		_xp_btn.position = Vector2(buttons_x, cards_y + button_h + button_gap)
 		_xp_btn.custom_minimum_size = Vector2(button_w, button_h)
+		_xp_btn.size = Vector2(button_w, button_h)
 	if _lock_btn != null:
 		_lock_btn.position = Vector2(buttons_x, cards_y + (button_h + button_gap) * 2.0)
 		_lock_btn.custom_minimum_size = Vector2(button_w, maxf(32.0, button_h - 10.0))
+		_lock_btn.size = _lock_btn.custom_minimum_size
 
 
 # ── Signal handlers ────────────────────────────────────────────────────────

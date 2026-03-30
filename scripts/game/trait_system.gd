@@ -11,8 +11,8 @@ static func get_active_synergies(board_units: Array) -> Array:
 	for unit in board_units:
 		if unit.race != "":
 			race_counts[unit.race] = race_counts.get(unit.race, 0) + 1
-		if unit.trait != "":
-			class_counts[unit.trait] = class_counts.get(unit.trait, 0) + 1
+		if unit.trait_id != "":
+			class_counts[unit.trait_id] = class_counts.get(unit.trait_id, 0) + 1
 
 	var active: Array = []
 
@@ -59,7 +59,7 @@ static func apply_synergies(board_units: Array, active_synergies: Array) -> void
 
 		for unit in board_units:
 			var matches: bool = (synergy_type == "race" and unit.race == synergy_id) \
-			or (synergy_type == "class" and unit.trait == synergy_id)
+			or (synergy_type == "class" and unit.trait_id == synergy_id)
 
 			match effect:
 				"max_hp_bonus_percent":

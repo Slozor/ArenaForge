@@ -6,6 +6,7 @@ var _settings: Dictionary = {}
 var _volume_slider: HSlider = null
 var _touch_toggle: CheckButton = null
 var _presentation_option: OptionButton = null
+var _panel: PanelContainer = null
 
 
 func _ready() -> void:
@@ -14,6 +15,9 @@ func _ready() -> void:
 	_build_ui()
 	_apply_settings_to_controls()
 	UISettings.apply_audio(_settings)
+	if not resized.is_connected(_refresh_layout):
+		resized.connect(_refresh_layout)
+	_refresh_layout()
 
 
 func _build_ui() -> void:
@@ -26,16 +30,16 @@ func _build_ui() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(520, 520)
-	center.add_child(panel)
+	_panel = PanelContainer.new()
+	_panel.custom_minimum_size = Vector2(520, 520)
+	center.add_child(_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 22)
 	margin.add_theme_constant_override("margin_top", 22)
 	margin.add_theme_constant_override("margin_right", 22)
 	margin.add_theme_constant_override("margin_bottom", 22)
-	panel.add_child(margin)
+	_panel.add_child(margin)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 16)
@@ -152,3 +156,9 @@ func _on_save_pressed() -> void:
 func _on_back_pressed() -> void:
 	UISettings.save_settings(_settings)
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+func _refresh_layout() -> void:
+	var size_v: Vector2 = get_viewport_rect().size
+	if _panel != null:
+		_panel.custom_minimum_size = Vector2(clampf(size_v.x * 0.42, 340.0, 620.0), clampf(size_v.y * 0.62, 380.0, 620.0))

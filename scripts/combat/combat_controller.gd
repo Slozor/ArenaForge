@@ -198,7 +198,7 @@ func _try_attack(unit, us: Dictionary) -> void:
 
 func _apply_assassin_leaps() -> void:
 	for unit in player_units + enemy_units:
-		if unit.trait != "assassin":
+		if unit.trait_id != "assassin":
 			continue
 		var enemies: Array = _get_enemies_of(unit)
 		var bt = UnitAI.find_assassin_target(unit, enemies)
@@ -218,10 +218,10 @@ func _apply_guardian_shields() -> void:
 	var player_guardians: int = 0
 	var enemy_guardians: int = 0
 	for u in player_units:
-		if u.trait == "guardian":
+		if u.trait_id == "guardian":
 			player_guardians += 1
 	for u in enemy_units:
-		if u.trait == "guardian":
+		if u.trait_id == "guardian":
 			enemy_guardians += 1
 
 	if player_guardians >= 2:
