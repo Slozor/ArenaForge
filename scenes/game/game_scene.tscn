@@ -14,11 +14,11 @@ script = ExtResource("5")
 anchors_preset = 15
 texture = ExtResource("6")
 expand_mode = 1
-stretch_mode = 0
+stretch_mode = 6
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15
-color = Color(0.055, 0.065, 0.09, 0.72)
+color = Color(0.03, 0.04, 0.06, 0.16)
 
 [node name="BoardUI" type="Node2D" parent="."]
 script = ExtResource("2")

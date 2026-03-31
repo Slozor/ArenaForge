@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <image href="res://assets/kenney_tiny_dungeon/Tiles/tile_0000.png" x="0" y="0" width="128" height="128" preserveAspectRatio="none"/>
+  <path d="M64 8 L108 32 L108 80 L64 120 L20 96 L20 48 Z" fill="#0f2d34" fill-opacity="0.48" stroke="#86ead7" stroke-opacity="0.70" stroke-width="3"/>
+  <path d="M64 18 L98 38 L98 76 L64 106 L30 86 L30 48 Z" fill="none" stroke="#effffb" stroke-opacity="0.10" stroke-width="2"/>
+</svg>

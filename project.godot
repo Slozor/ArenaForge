@@ -27,9 +27,11 @@ UISettings="*res://scripts/autoload/ui_settings.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/stretch/mode="canvas_items"
+window/stretch/mode="viewport"
 window/stretch/aspect="expand"
+window/stretch/scale_mode="integer"
 window/handheld/orientation=1
+window/vsync/vsync_mode=2
 
 [input_devices]
 

@@ -2,7 +2,7 @@
 
 ## Current blocker status
 
-- `export_presets.cfg` is missing.
+- `export_presets.cfg` now exists for Web.
 - No verified desktop export has been produced yet.
 - No itch.io page art package exists yet.
 - The game still needs one manual playtest pass after the latest UI and gameplay fixes.
@@ -16,7 +16,7 @@ Release the game as:
 - `Price`: Free
 - `Status`: Prototype / Early build
 
-Do not ship Web or mobile on itch.io first. Get one stable Windows build out first.
+For now, prioritize a stable browser build first, then follow with desktop if needed.
 
 ## Godot export plan
 
@@ -73,3 +73,4 @@ Then zip the folder as:
 - Add at least 3 real screenshots.
 - Add one 16:9 cover image.
 - Run one balance pass so the first match feels coherent.
+- Confirm the browser build is stable before any desktop release work.

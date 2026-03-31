@@ -3,8 +3,7 @@ extends Control
 class_name BenchUI
 
 const BENCH_SLOTS: int = 9
-const SLOT_SIZE: float = 80.0
-const SLOT_GAP: float = 8.0
+const SLOT_SIZE: float = 96.0
 const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
 const RESULT_PHASE: int = 2
@@ -19,203 +18,196 @@ const COST_COLORS: Dictionary = {
 }
 
 var _slots: Array[Control] = []
-var _units: Array = []         # Unit or null per slot
-var _selected_slot: int = -1   # -1 = nothing selected
+var _units: Array = []
+var _selected_slot: int = -1
 var _interaction_enabled: bool = true
 var _board_ui = null
-var _phase_label: Label = null
+var _shop_ui = null
+var _touch_hints_enabled: bool = true
+
+var _panel: PanelContainer = null
+var _panel_patch: NinePatchRect = null
+var _header_row: HBoxContainer = null
+var _slots_row: HBoxContainer = null
+var _title_label: Label = null
 var _count_label: Label = null
 var _hint_label: Label = null
-var _touch_hints_enabled: bool = true
-var _background_line: ColorRect = null
-var _title_label: Label = null
 
 signal unit_selected_from_bench(unit)
 signal unit_sold(unit)
+signal unit_hovered(unit)
+signal unit_unhovered()
 
 
 func _ready() -> void:
 	anchor_left = 0.0
-	anchor_top = 1.0
-	anchor_right = 1.0
-	anchor_bottom = 1.0
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	anchor_top = 0.0
+	anchor_right = 0.0
+	anchor_bottom = 0.0
 	offset_left = 0.0
-	offset_top = -(SLOT_SIZE + 34.0)
+	offset_top = 0.0
 	offset_right = 0.0
-	offset_bottom = -200.0
-	custom_minimum_size = Vector2(0.0, SLOT_SIZE + 34.0)
+	offset_bottom = 0.0
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	theme = UITheme.build_theme()
+	z_as_relative = false
+	z_index = 100
 	_touch_hints_enabled = bool(UISettings.load_settings().get(UISettings.KEY_TOUCH_HINTS, true))
-	_build_background()
-	_build_header()
-	_build_slots()
+	for i in BENCH_SLOTS:
+		_units.append(null)
+	_build_ui()
 	_bind_scene_peers()
 	_refresh_overview()
 	if not resized.is_connected(_refresh_layout):
 		resized.connect(_refresh_layout)
 	_refresh_layout()
+	call_deferred("move_to_front")
 
 
-func _build_background() -> void:
-	var bg := ColorRect.new()
-	bg.color = UITheme.BG_PANEL
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+func _build_ui() -> void:
+	_panel = PanelContainer.new()
+	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	add_child(_panel)
 
-	_background_line = ColorRect.new()
-	_background_line.color = UITheme.GOLD
-	_background_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_background_line)
+	_panel_patch = UITheme.make_nine_patch()
+	_panel.add_child(_panel_patch)
 
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_panel.add_child(margin)
 
-func _build_header() -> void:
+	var vbox := VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 4)
+	margin.add_child(vbox)
+
+	_header_row = HBoxContainer.new()
+	_header_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(_header_row)
+
 	_title_label = Label.new()
 	_title_label.text = "BENCH"
-	_title_label.position = Vector2(18, 6)
-	_title_label.add_theme_font_size_override("font_size", 13)
+	_title_label.add_theme_font_size_override("font_size", 10)
 	_title_label.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
-	add_child(_title_label)
+	_header_row.add_child(_title_label)
 
 	_count_label = Label.new()
-	_count_label.position = Vector2(96, 6)
-	_count_label.add_theme_font_size_override("font_size", 13)
+	_count_label.add_theme_font_size_override("font_size", 10)
 	_count_label.add_theme_color_override("font_color", UITheme.GOLD)
-	add_child(_count_label)
+	_header_row.add_child(_count_label)
 
-	_phase_label = Label.new()
-	_phase_label.position = Vector2(240, 6)
-	_phase_label.add_theme_font_size_override("font_size", 12)
-	_phase_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	add_child(_phase_label)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_header_row.add_child(spacer)
 
 	_hint_label = Label.new()
-	_hint_label.position = Vector2(420, 6)
-	_hint_label.add_theme_font_size_override("font_size", 12)
+	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint_label.add_theme_font_size_override("font_size", 9)
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	add_child(_hint_label)
+	_header_row.add_child(_hint_label)
 
+	_slots_row = HBoxContainer.new()
+	_slots_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_slots_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(_slots_row)
 
-func _build_slots() -> void:
 	for i in BENCH_SLOTS:
-		_units.append(null)
 		var slot := _make_slot(i)
-		add_child(slot)
+		_slots_row.add_child(slot)
 		_slots.append(slot)
 
 
 func _make_slot(index: int) -> Control:
-	var container := Control.new()
-	container.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
-	container.name = "Slot_%d" % index
+	var slot := Control.new()
+	slot.name = "Slot_%d" % index
+	slot.mouse_filter = Control.MOUSE_FILTER_PASS
+	slot.custom_minimum_size = Vector2(32, 32)
+	slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	var bg := TextureRect.new()
 	bg.name = "BG"
 	bg.texture = SLOT_TEXTURE
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.modulate = Color(UITheme.BOARD_TILE.r, UITheme.BOARD_TILE.g, UITheme.BOARD_TILE.b, 0.90)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	container.add_child(bg)
+	bg.modulate = Color(UITheme.BORDER_MID.r, UITheme.BORDER_MID.g, UITheme.BORDER_MID.b, 0.30)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(bg)
 
 	var portrait := TextureRect.new()
 	portrait.name = "Portrait"
 	portrait.texture = PORTRAIT_TEXTURE
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.position = Vector2(14, 10)
-	portrait.custom_minimum_size = Vector2(SLOT_SIZE - 28, SLOT_SIZE - 28)
+	portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.modulate = Color(1, 1, 1, 0.0)
-	container.add_child(portrait)
+	slot.add_child(portrait)
 
 	var border := ColorRect.new()
 	border.name = "Border"
 	border.color = Color(0, 0, 0, 0)
 	border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_child(border)
-
-	var name_lbl := Label.new()
-	name_lbl.name = "NameLabel"
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 10)
-	name_lbl.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
-	name_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	container.add_child(name_lbl)
+	slot.add_child(border)
 
 	var star_lbl := Label.new()
 	star_lbl.name = "StarLabel"
-	star_lbl.position = Vector2(2, 2)
-	star_lbl.add_theme_font_size_override("font_size", 12)
+	star_lbl.position = Vector2(2, 1)
+	star_lbl.add_theme_font_size_override("font_size", 11)
 	star_lbl.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
-	container.add_child(star_lbl)
-
-	var sell_lbl := Label.new()
-	sell_lbl.name = "SellLabel"
-	sell_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sell_lbl.add_theme_font_size_override("font_size", 10)
-	sell_lbl.add_theme_color_override("font_color", UITheme.GREEN_HP)
-	sell_lbl.position = Vector2(0, SLOT_SIZE - 16)
-	sell_lbl.custom_minimum_size = Vector2(SLOT_SIZE, 14)
-	container.add_child(sell_lbl)
+	star_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(star_lbl)
 
 	var btn := Button.new()
 	btn.name = "TapArea"
 	btn.flat = true
 	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.pressed.connect(_on_slot_tapped.bind(index))
-	container.add_child(btn)
+	btn.mouse_entered.connect(_on_slot_hovered.bind(index))
+	btn.mouse_exited.connect(_on_slot_unhovered)
+	slot.add_child(btn)
 
-	return container
+	return slot
 
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = maxf(640.0, view_size.x)
-	var compact: bool = width < 980.0
-	var slot_scale: float = clampf((width - 44.0) / (BENCH_SLOTS * SLOT_SIZE + (BENCH_SLOTS - 1) * SLOT_GAP), 0.62, 1.0)
-	if compact:
-		slot_scale = minf(slot_scale, 0.78)
-	var slot_size: float = SLOT_SIZE * slot_scale
-	var gap: float = maxf(4.0, SLOT_GAP * slot_scale)
-	var header_h: float = 24.0
-	var bench_h: float = slot_size + header_h + 14.0
-	position = Vector2(0.0, view_size.y - 200.0 - bench_h)
+	var width: float = minf(maxf(760.0, view_size.x - UITheme.SCREEN_GUTTER * 2.0), UITheme.CONTENT_MAX_WIDTH)
+	var bench_h: float = UITheme.BENCH_PANEL_HEIGHT
+	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
+	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP
+	position = Vector2(round((view_size.x - width) * 0.5), bench_y)
 	size = Vector2(width, bench_h)
 
-	if _background_line != null:
-		_background_line.size = Vector2(width, 2.0)
-	if _title_label != null:
-		_title_label.position = Vector2(16.0, 6.0)
-	if _count_label != null:
-		_count_label.position = Vector2(92.0, 6.0)
-	if _phase_label != null:
-		_phase_label.position = Vector2(190.0, 6.0)
-	if _hint_label != null:
-		_hint_label.position = Vector2(width * 0.36, 6.0)
-		_hint_label.visible = _touch_hints_enabled and not compact
+	var compact: bool = width < 1360.0
+	var large: bool = width >= 1600.0
+	var available_w: float = width - 32.0
+	var slot_size: float = clampf((available_w - float(BENCH_SLOTS - 1) * 6.0) / float(BENCH_SLOTS), 22.0, 44.0 if large else 36.0)
+	if compact:
+		slot_size = minf(slot_size, 30.0)
+	_slots_row.add_theme_constant_override("separation", clampi(int(round(slot_size * 0.18)), 4, 8))
 
-	var total_w: float = BENCH_SLOTS * slot_size + (BENCH_SLOTS - 1) * gap
-	var start_x: float = (width - total_w) * 0.5
-	var slots_y: float = header_h + 8.0
-	for i in _slots.size():
-		var slot: Control = _slots[i]
-		slot.position = Vector2(start_x + i * (slot_size + gap), slots_y)
+	for slot in _slots:
 		slot.custom_minimum_size = Vector2(slot_size, slot_size)
-		slot.size = Vector2(slot_size, slot_size)
 		var portrait: TextureRect = slot.get_node("Portrait") as TextureRect
 		if portrait != null:
-			var portrait_size: float = maxf(24.0, slot_size - 28.0)
-			portrait.position = Vector2((slot_size - portrait_size) * 0.5, (slot_size - portrait_size) * 0.5 - 2.0)
-			portrait.custom_minimum_size = Vector2(portrait_size, portrait_size)
-		var sell_lbl: Label = slot.get_node("SellLabel") as Label
-		if sell_lbl != null:
-			sell_lbl.position = Vector2(0.0, slot_size - 16.0)
-			sell_lbl.custom_minimum_size = Vector2(slot_size, 14.0)
+			var inset: float = clampf(slot_size * 0.10, 2.0, 4.0)
+			portrait.offset_left = inset
+			portrait.offset_top = inset
+			portrait.offset_right = -inset
+			portrait.offset_bottom = -inset
 
-
-# ── Public API ─────────────────────────────────────────────────────────────
 
 func add_unit(unit) -> bool:
 	var slot: int = _find_free_slot()
@@ -231,12 +223,10 @@ func add_unit(unit) -> bool:
 		_check_merge(unit)
 		_refresh_overview()
 		return true
-
 	if unit.star_level == 1 and _can_merge_unit(unit.unit_id):
 		_apply_direct_merge(unit.unit_id)
 		_refresh_overview()
 		return true
-
 	return false
 
 
@@ -259,11 +249,7 @@ func can_accept_purchase(unit_id: String) -> bool:
 
 
 func can_accept_unit(unit) -> bool:
-	if unit == null:
-		return false
-	if _find_free_slot() != -1:
-		return true
-	return unit.star_level == 1 and _can_merge_unit(unit.unit_id)
+	return _find_free_slot() != -1 or _can_merge_unit(unit.unit_id)
 
 
 func remove_unit_at(slot: int):
@@ -279,9 +265,9 @@ func remove_unit_at(slot: int):
 
 
 func deselect() -> void:
-	if _selected_slot != -1:
+	if _selected_slot >= 0 and _selected_slot < _slots.size():
 		_set_slot_selected(_selected_slot, false)
-		_selected_slot = -1
+	_selected_slot = -1
 
 
 func is_full() -> bool:
@@ -301,7 +287,7 @@ func get_capacity() -> int:
 
 
 func get_free_slots() -> int:
-	return max(0, BENCH_SLOTS - get_unit_count())
+	return BENCH_SLOTS - get_unit_count()
 
 
 func get_all_units() -> Array:
@@ -312,34 +298,34 @@ func get_all_units() -> Array:
 	return result
 
 
-# ── Slot interaction ────────────────────────────────────────────────────────
-
 func _on_slot_tapped(index: int) -> void:
 	if not _interaction_enabled:
 		return
-
 	var unit = _units[index]
-
+	if unit == null:
+		deselect()
+		return
 	if _selected_slot == index:
-		# Tap same slot → sell
 		_sell_unit(index)
 		return
-
-	if _selected_slot != -1:
-		# Another slot was selected → deselect it
-		_set_slot_selected(_selected_slot, false)
-		_selected_slot = -1
-
-	if unit == null:
-		return
-
-	# Select this unit
+	deselect()
 	_selected_slot = index
 	_set_slot_selected(index, true)
 	unit_selected_from_bench.emit(unit)
 
 
-# Called by board_ui when unit was successfully placed on board
+func _on_slot_hovered(index: int) -> void:
+	if index < 0 or index >= _units.size():
+		return
+	var unit = _units[index]
+	if unit != null:
+		unit_hovered.emit(unit)
+
+
+func _on_slot_unhovered() -> void:
+	unit_unhovered.emit()
+
+
 func on_unit_placed_on_board(unit) -> void:
 	var idx: int = _units.find(unit)
 	if idx != -1:
@@ -351,15 +337,12 @@ func on_unit_placed_on_board(unit) -> void:
 	_refresh_overview()
 
 
-# Called by board_ui when a unit is sent back to bench
 func receive_unit_from_board(unit) -> void:
 	add_unit(unit)
 
 
-# ── Merge (star upgrade) ───────────────────────────────────────────────────
-
 func _check_merge(new_unit) -> void:
-	if new_unit.star_level >= 3:
+	if new_unit == null:
 		return
 	_try_merge_chain_for_unit(new_unit)
 
@@ -367,21 +350,19 @@ func _check_merge(new_unit) -> void:
 func _apply_direct_merge(unit_id: String) -> void:
 	var candidates: Array = _get_merge_candidates(unit_id, 1)
 	if candidates.size() >= 3:
-		_try_merge_chain_for_unit(candidates[0])
+		_merge_candidates(candidates.slice(0, 3))
 
 
 func _show_upgrade_flash(slot_idx: int) -> void:
-	# Quick gold border flash to signal upgrade (tween)
-	var slot: Control = _slots[slot_idx]
-	var border: ColorRect = slot.get_node("Border") as ColorRect
+	if slot_idx < 0 or slot_idx >= _slots.size():
+		return
+	var border: ColorRect = _slots[slot_idx].get_node("Border") as ColorRect
 	if border == null:
 		return
-	border.color = Color(1.0, 0.85, 0.1, 0.8)
+	border.color = Color(UITheme.GOLD_BRIGHT.r, UITheme.GOLD_BRIGHT.g, UITheme.GOLD_BRIGHT.b, 0.35)
 	var tween := create_tween()
-	tween.tween_property(border, "color", Color(0, 0, 0, 0), 0.6)
+	tween.tween_property(border, "color", Color(0, 0, 0, 0), 0.22)
 
-
-# ── Sell ─────────────────────────────────────────────────────────────────────
 
 func _sell_unit(slot_idx: int) -> void:
 	var unit = _units[slot_idx]
@@ -398,51 +379,40 @@ func _sell_unit(slot_idx: int) -> void:
 	_refresh_overview()
 
 
-# ── Visual refresh ─────────────────────────────────────────────────────────
-
 func _refresh_slot(index: int) -> void:
 	var slot: Control = _slots[index]
 	var unit = _units[index]
 	var bg: TextureRect = slot.get_node("BG") as TextureRect
 	var portrait: TextureRect = slot.get_node("Portrait") as TextureRect
-	var name_lbl: Label = slot.get_node("NameLabel") as Label
 	var star_lbl: Label = slot.get_node("StarLabel") as Label
-	var sell_lbl: Label = slot.get_node("SellLabel") as Label
-	var tap_btn: Button = slot.get_node("TapArea") as Button
+	var border: ColorRect = slot.get_node("Border") as ColorRect
 
 	if unit == null:
-		bg.modulate = Color(UITheme.BOARD_TILE.r, UITheme.BOARD_TILE.g, UITheme.BOARD_TILE.b, 0.42)
+		bg.modulate = Color(UITheme.BORDER_MID.r, UITheme.BORDER_MID.g, UITheme.BORDER_MID.b, 0.30)
+		portrait.texture = PORTRAIT_TEXTURE
 		portrait.modulate = Color(1, 1, 1, 0.0)
-		name_lbl.text = ""
 		star_lbl.text = ""
-		sell_lbl.text = ""
+		border.color = Color(0, 0, 0, 0)
 		slot.tooltip_text = ""
-		if tap_btn != null:
-			tap_btn.tooltip_text = ""
 		return
 
 	var cost: int = unit.cost
 	var tier_color: Color = COST_COLORS.get(cost, UITheme.BORDER_MID)
-	bg.modulate = tier_color.darkened(0.25)
-	portrait.modulate = tier_color.lightened(0.1)
-	name_lbl.text = unit.unit_name
+	bg.modulate = tier_color.darkened(0.22)
+	portrait.texture = DataManager.get_unit_portrait(unit.unit_id)
+	portrait.modulate = Color.WHITE
 	star_lbl.text = "★".repeat(unit.star_level - 1) if unit.star_level > 1 else ""
-	sell_lbl.text = "%dg" % (cost * unit.star_level)
-	var tooltip: String = DataManager.get_unit_tooltip(unit.unit_id)
-	slot.tooltip_text = tooltip
-	if tap_btn != null:
-		tap_btn.tooltip_text = tooltip
+	border.color = Color(0, 0, 0, 0)
+	slot.tooltip_text = DataManager.get_unit_tooltip(unit.unit_id)
 
 
 func _set_slot_selected(index: int, selected: bool) -> void:
-	var slot: Control = _slots[index]
-	var bg: TextureRect = slot.get_node("BG") as TextureRect
-	if bg == null:
+	if index < 0 or index >= _slots.size():
 		return
-	if selected:
-		bg.modulate = bg.modulate.lerp(UITheme.GOLD_BRIGHT, 0.40)
-	else:
-		_refresh_slot(index)
+	var border: ColorRect = _slots[index].get_node("Border") as ColorRect
+	if border == null:
+		return
+	border.color = Color(UITheme.GOLD_BRIGHT.r, UITheme.GOLD_BRIGHT.g, UITheme.GOLD_BRIGHT.b, 0.35) if selected else Color(0, 0, 0, 0)
 
 
 func _find_free_slot() -> int:
@@ -462,31 +432,25 @@ func _find_matching_slots(unit_id: String) -> Array[int]:
 
 
 func _can_merge_unit(unit_id: String) -> bool:
-	return _get_merge_candidates(unit_id, 1).size() >= 2
+	return _get_merge_candidates(unit_id, 1).size() >= 3 or _get_merge_candidates(unit_id, 2).size() >= 3
 
 
 func _try_merge_chain_for_unit(unit) -> void:
-	var current_unit = unit
-	while current_unit != null and current_unit.star_level < 3:
-		var candidates: Array = _get_merge_candidates(current_unit.unit_id, current_unit.star_level)
-		if candidates.size() < 3:
-			break
-		current_unit = _merge_candidates(candidates)
+	var candidates: Array = _get_merge_candidates(unit.unit_id, unit.star_level)
+	if candidates.size() >= 3:
+		var keeper = _merge_candidates(candidates.slice(0, 3))
+		if keeper != null and keeper.star_level < 3:
+			_try_merge_chain_for_unit(keeper)
 
 
 func _merge_candidates(candidates: Array):
+	if candidates.size() < 3:
+		return null
 	var keeper = candidates[0]
-	var next_star: int = clampi(keeper.star_level + 1, 1, 3)
-	keeper.upgrade_to_star(next_star)
-	keeper.visible = not keeper.is_on_bench
-	if keeper.has_method("play_heal_pulse"):
-		keeper.play_heal_pulse()
-
-	for i in range(1, 3):
+	keeper.upgrade_to_star(keeper.star_level + 1)
+	for i in range(1, candidates.size()):
 		var merged_unit = candidates[i]
-		if _board_ui != null and _board_ui.remove_unit_instance(merged_unit):
-			if is_instance_valid(merged_unit):
-				merged_unit.queue_free()
+		if merged_unit == null:
 			continue
 		var slot_idx: int = _units.find(merged_unit)
 		if slot_idx != -1:
@@ -494,7 +458,6 @@ func _merge_candidates(candidates: Array):
 			_refresh_slot(slot_idx)
 		if is_instance_valid(merged_unit):
 			merged_unit.queue_free()
-
 	var keeper_slot: int = _units.find(keeper)
 	if keeper_slot != -1:
 		_refresh_slot(keeper_slot)
@@ -515,29 +478,31 @@ func _get_merge_candidates(unit_id: String, star_level: int) -> Array:
 		if unit != null and unit.unit_id == unit_id and unit.star_level == star_level:
 			bench_candidates.append(unit)
 
-	return board_candidates + bench_candidates
+	var ordered: Array = []
+	if not board_candidates.is_empty():
+		ordered.append(board_candidates[0])
+	for unit in bench_candidates:
+		if not ordered.has(unit):
+			ordered.append(unit)
+	for unit in board_candidates:
+		if not ordered.has(unit):
+			ordered.append(unit)
+	return ordered
 
 
 func _bind_scene_peers() -> void:
-	var root: Node = get_parent()
-	if root == null:
-		root = get_tree().current_scene
+	var root := get_parent()
 	if root == null:
 		return
-
 	_board_ui = root.get_node_or_null("BoardUI")
-
+	_shop_ui = root.get_node_or_null("ShopUI")
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
-
 	if _board_ui != null:
-		if not unit_selected_from_bench.is_connected(_board_ui.select_unit_from_bench):
-			unit_selected_from_bench.connect(_board_ui.select_unit_from_bench)
 		if not _board_ui.unit_placed.is_connected(_on_board_unit_placed):
 			_board_ui.unit_placed.connect(_on_board_unit_placed)
 		if not _board_ui.unit_sent_to_bench.is_connected(receive_unit_from_board):
 			_board_ui.unit_sent_to_bench.connect(receive_unit_from_board)
-
 	_on_phase_changed(PREP_PHASE)
 
 
@@ -547,22 +512,19 @@ func _on_board_unit_placed(unit, _col: int, _row: int) -> void:
 
 func _on_phase_changed(phase: int) -> void:
 	_interaction_enabled = phase == PREP_PHASE
-	for slot in _slots:
-		var btn: Button = slot.get_node_or_null("TapArea") as Button
-		if btn != null:
-			btn.disabled = not _interaction_enabled
 	if not _interaction_enabled:
 		deselect()
+	_refresh_overview()
+
+
+func refresh_overview() -> void:
 	_refresh_overview()
 
 
 func _refresh_overview() -> void:
 	if _count_label != null:
 		_count_label.text = "%d/%d" % [get_unit_count(), BENCH_SLOTS]
-	if _phase_label != null:
-		_phase_label.text = "Select a unit, then place it."
-		if not _interaction_enabled:
-			_phase_label.text = "Bench locked during combat."
 	if _hint_label != null:
-		_hint_label.visible = _touch_hints_enabled and size.x >= 980.0
-		_hint_label.text = "Tap again to sell. Tap outside the board to return."
+		_hint_label.text = "Tap a bench unit, then place it." if _interaction_enabled else ""
+	for i in _slots.size():
+		_refresh_slot(i)

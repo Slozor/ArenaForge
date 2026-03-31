@@ -24,6 +24,8 @@ Goal: ship a clean, cheap, license-safe presentation layer that works on PC and 
 - `ui/bench_slot.svg`
 - `ui/gold_icon.svg`
 - `ui/trait_badge.svg`
+- `ui/little_legend.svg`
+- `ui/npc_avatar.svg`
 - `portraits/placeholder_unit.svg`
 - `items/placeholder_item.svg`
 

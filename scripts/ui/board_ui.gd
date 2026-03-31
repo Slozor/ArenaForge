@@ -2,6 +2,21 @@ extends Node2D
 
 class_name BoardUI
 
+const BOARD_TILE_TEXTURE: Texture2D = preload("res://assets/ui/board_tile.svg")
+const BOARD_TILE_FRONT_TEXTURE: Texture2D = preload("res://assets/ui/board_tile_front.svg")
+const BOARD_TILE_SELECTED_TEXTURE: Texture2D = preload("res://assets/ui/board_tile_selected.svg")
+const ARENA_OUTER_TILE: Texture2D = preload("res://assets/kenney_ui_pixel_adventure/tile_0001.png")
+const ARENA_SAND_TILE: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0048.png")
+const ARENA_SAND_DETAIL_TILE: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0049.png")
+const ARENA_SAND_ACCENT_TILE: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0050.png")
+const ARENA_STONE_TOP_LEFT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0037.png")
+const ARENA_STONE_TOP: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0038.png")
+const ARENA_STONE_TOP_RIGHT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0040.png")
+const ARENA_STONE_BOTTOM_LEFT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0036.png")
+const ARENA_STONE_BOTTOM: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0039.png")
+const ARENA_STONE_BOTTOM_RIGHT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0040.png")
+const ARENA_TORCH: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0053.png")
+
 const COLS: int = 7
 const ROWS: int = 4
 const CELL_SIZE: float = 96.0
@@ -24,6 +39,7 @@ var _shop_ui = null
 var _board_offset: Vector2 = BOARD_OFFSET
 var _cell_size: float = CELL_SIZE
 var _label_font_size: int = 13
+var _play_rect: Rect2 = Rect2()
 var _hovered_unit = null
 var _tooltip_panel: PanelContainer = null
 var _tooltip_label: Label = null
@@ -41,6 +57,7 @@ signal unit_tapped(unit)
 
 
 func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_initialize_grid()
 	_build_tooltip()
 	_bind_scene_peers()
@@ -231,9 +248,14 @@ func _update_tooltip(pointer_pos: Vector2) -> void:
 		return
 	if _hovered_unit == null:
 		_tooltip_panel.visible = false
+		if _hud_ui != null and _hud_ui.has_method("hide_inspect"):
+			_hud_ui.call("hide_inspect")
 		return
-	_tooltip_label.text = DataManager.get_unit_tooltip(_hovered_unit.unit_id)
+	var tooltip_text: String = DataManager.get_unit_tooltip(_hovered_unit.unit_id)
+	_tooltip_label.text = tooltip_text
 	_tooltip_panel.visible = true
+	if _hud_ui != null and _hud_ui.has_method("show_inspect_text"):
+		_hud_ui.call("show_inspect_text", tooltip_text)
 	var tooltip_pos: Vector2 = pointer_pos + Vector2(16, 16)
 	var view_size: Vector2 = get_viewport_rect().size
 	_tooltip_panel.position = tooltip_pos
@@ -319,31 +341,79 @@ func _draw_board() -> void:
 
 
 func _draw() -> void:
-	# Board outer frame
-	var board_rect := Rect2(_board_offset - Vector2(18, 18), Vector2(COLS * _cell_size + 36, ROWS * _cell_size + 36))
-	draw_rect(board_rect, UITheme.BG_DARK, true)
-	draw_rect(board_rect, UITheme.GOLD, false, 2.0)
+	var board_rect := Rect2(_board_offset - Vector2(22, 22), Vector2(COLS * _cell_size + 44, ROWS * _cell_size + 44))
+	var arena_rect := _play_rect
+	_draw_tiled_texture(ARENA_OUTER_TILE, arena_rect, 48.0)
+	draw_rect(arena_rect, Color(0.92, 0.74, 0.28, 0.22), false, 2.0)
+	var inner_outer_rect: Rect2 = Rect2(arena_rect.position + Vector2(18, 18), arena_rect.size - Vector2(36, 36))
+	_draw_tiled_texture(ARENA_OUTER_TILE, inner_outer_rect, 48.0, Color(1, 1, 1, 0.18))
+	_draw_arena_ground(board_rect)
+	draw_rect(board_rect, Color(0.92, 0.74, 0.28, 0.92), false, 2.0)
+	draw_rect(Rect2(board_rect.position + Vector2(8, 8), board_rect.size - Vector2(16, 16)), Color(0.22, 0.75, 0.95, 0.18), false, 1.0)
 	_draw_lane_labels()
 
 	for col in COLS:
 		for row in ROWS:
 			var center: Vector2 = _cell_to_world(col, row)
-			var radius: float = _cell_size * HEX_RADIUS_RATIO
-			var points: PackedVector2Array = _hex_points(center, radius)
-			var fill: Color = UITheme.BOARD_TILE
-			if row == 0:
-				fill = fill.lightened(0.08)
-			elif row == ROWS - 1:
-				fill = fill.lightened(0.04)
-			draw_colored_polygon(points, fill)
-			_draw_hex_outline(points, UITheme.BOARD_BORDER, 1.4)
+			var tile_rect: Rect2 = Rect2(center - Vector2(_cell_size * 0.5, _cell_size * 0.5), Vector2(_cell_size, _cell_size))
+			var tile_texture: Texture2D = BOARD_TILE_FRONT_TEXTURE if row == ROWS - 1 else BOARD_TILE_TEXTURE
+			draw_texture_rect(tile_texture, tile_rect, false, Color(1, 1, 1, 0.78))
 
 			if selected_unit != null and selected_from_bench and grid[col][row] == null:
-				draw_colored_polygon(points, Color(UITheme.TEAL.r, UITheme.TEAL.g, UITheme.TEAL.b, 0.16))
-				_draw_hex_outline(points, UITheme.TEAL, 2.2)
+				draw_texture_rect(BOARD_TILE_SELECTED_TEXTURE, tile_rect, false, Color(0.30, 0.95, 0.82, 0.55))
 			elif selected_unit != null and not selected_from_bench and Vector2i(col, row) == selected_from_cell:
-				draw_colored_polygon(points, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.18))
-				_draw_hex_outline(points, UITheme.GOLD_BRIGHT, 2.4)
+				draw_texture_rect(BOARD_TILE_SELECTED_TEXTURE, tile_rect, false, Color(1.0, 1.0, 1.0, 0.92))
+
+
+func _draw_arena_wings(_board_rect: Rect2) -> void:
+	return
+
+
+func _draw_arena_ground(board_rect: Rect2) -> void:
+	var tile_size: float = 32.0
+	var cols: int = int(ceil(board_rect.size.x / tile_size))
+	var rows: int = int(ceil(board_rect.size.y / tile_size))
+	for y in rows:
+		for x in cols:
+			var pos: Vector2 = board_rect.position + Vector2(x * tile_size, y * tile_size)
+			var rect: Rect2 = Rect2(pos, Vector2(tile_size, tile_size))
+			var texture: Texture2D = ARENA_SAND_TILE
+			if y == 0 and x == 0:
+				texture = ARENA_STONE_TOP_LEFT
+			elif y == 0 and x == cols - 1:
+				texture = ARENA_STONE_TOP_RIGHT
+			elif y == rows - 1 and x == 0:
+				texture = ARENA_STONE_BOTTOM_LEFT
+			elif y == rows - 1 and x == cols - 1:
+				texture = ARENA_STONE_BOTTOM_RIGHT
+			elif y == 0:
+				texture = ARENA_STONE_TOP
+			elif y == rows - 1:
+				texture = ARENA_STONE_BOTTOM
+			elif x == 0 or x == cols - 1:
+				texture = ARENA_SAND_TILE
+			else:
+				if (x + y) % 7 == 0:
+					texture = ARENA_SAND_DETAIL_TILE
+				elif (x + y) % 11 == 0:
+					texture = ARENA_SAND_ACCENT_TILE
+			draw_texture_rect(texture, rect, false)
+
+	var side_tile_rect: Rect2 = Rect2(board_rect.position + Vector2(tile_size, tile_size), Vector2(tile_size, tile_size))
+	var right_tile_rect: Rect2 = Rect2(board_rect.position + Vector2(board_rect.size.x - tile_size * 2.0, tile_size), Vector2(tile_size, tile_size))
+	draw_texture_rect(ARENA_TORCH, side_tile_rect, false)
+	draw_texture_rect(ARENA_TORCH, right_tile_rect, false)
+
+
+func _draw_tiled_texture(texture: Texture2D, rect: Rect2, tile_size: float = 16.0, tint: Color = Color.WHITE) -> void:
+	if texture == null:
+		return
+	var cols: int = int(ceil(rect.size.x / tile_size))
+	var rows: int = int(ceil(rect.size.y / tile_size))
+	for y in rows:
+		for x in cols:
+			var tile_rect: Rect2 = Rect2(rect.position + Vector2(x * tile_size, y * tile_size), Vector2(tile_size, tile_size))
+			draw_texture_rect(texture, tile_rect, false, tint)
 
 
 func _highlight_valid_cells() -> void:
@@ -391,20 +461,26 @@ func _bind_scene_peers() -> void:
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var left_margin: float = clampf(view_size.x * 0.085, 86.0, 132.0)
-	var right_margin: float = clampf(view_size.x * 0.025, 14.0, 26.0)
-	var top_margin: float = 74.0
-	var bottom_limit: float = view_size.y - 232.0
-	if _bench_ui != null:
-		bottom_limit = minf(bottom_limit, _bench_ui.position.y - 8.0)
-	elif _shop_ui != null:
-		bottom_limit = minf(bottom_limit, _shop_ui.position.y - 64.0)
-	var usable_w: float = maxf(280.0, view_size.x - left_margin - right_margin)
-	var usable_h: float = maxf(220.0, bottom_limit - top_margin)
-	_cell_size = clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 56.0, 122.0)
+	var content_w: float = minf(maxf(640.0, view_size.x - UITheme.SCREEN_GUTTER * 2.0), UITheme.CONTENT_MAX_WIDTH)
+	var content_x: float = round((view_size.x - content_w) * 0.5)
+	var side_pad: float = clampf(content_w * 0.010, 8.0, 18.0)
+	var side_column: float = clampf(content_w * 0.11, 72.0, 132.0)
+	var top_margin: float = UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
+	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
+	var bench_y: float = shop_y - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP
+	var bottom_limit: float = bench_y - UITheme.UI_STACK_GAP - 6.0
+	_play_rect = Rect2(Vector2(content_x, top_margin), Vector2(content_w, maxf(200.0, bottom_limit - top_margin)))
+	var left_margin: float = side_column + side_pad
+	var right_margin: float = side_column + side_pad
+	var usable_w: float = maxf(280.0, _play_rect.size.x - left_margin - right_margin)
+	var usable_h: float = maxf(220.0, _play_rect.size.y - 2.0)
+	_cell_size = round(clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 72.0, 168.0))
 	var board_w: float = float(COLS) * _cell_size
 	var board_h: float = float(ROWS) * _cell_size
-	_board_offset = Vector2(left_margin + (usable_w - board_w) * 0.5, top_margin + (usable_h - board_h) * 0.5)
+	_board_offset = Vector2(
+		round(_play_rect.position.x + (_play_rect.size.x - board_w) * 0.5),
+		round(_play_rect.position.y + (_play_rect.size.y - board_h) * 0.40)
+	)
 	_label_font_size = int(clampf(_cell_size * 0.14, 10.0, 14.0))
 	for child in get_children():
 		if child == null or not is_instance_valid(child):
@@ -413,7 +489,9 @@ func _refresh_layout() -> void:
 			continue
 		if not child.has_method("get_attack_damage"):
 			continue
-		if child.board_position.y >= ROWS:
+		if child.has_method("set"):
+			child.set("unit_visual_scale", clampf(_cell_size / 72.0, 1.3, 2.4))
+		if bool(child.get("is_enemy_unit")) or child.board_position.y >= ROWS:
 			child.position = combat_cell_to_world(child.board_position.x, child.board_position.y)
 		elif child.board_position.x >= 0 and child.board_position.y >= 0:
 			child.position = _cell_to_world(child.board_position.x, child.board_position.y)

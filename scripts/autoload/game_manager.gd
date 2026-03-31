@@ -49,8 +49,10 @@ var player_health: int = 100
 var player_xp: int = 0
 var player_level: int = 1
 var current_round: int = 0
-var current_round_kind: String = "combat"
+var current_round_kind: String = "creep"
 var item_inventory: Array[String] = []
+var active_augments: Array[String] = []
+var pending_augment_choices: Array[String] = []
 var final_placement: int = 0
 var run_summary: Dictionary = {}
 
@@ -63,6 +65,9 @@ signal level_changed(new_level: int)
 signal team_cap_changed(new_cap: int)
 signal round_kind_changed(round_kind: String)
 signal inventory_changed(items: Array[String])
+signal augments_changed(active_augments: Array[String])
+signal augment_choice_offered(options: Array[String])
+signal augment_choice_resolved(augment_id: String)
 signal run_finished(summary: Dictionary)
 
 
@@ -150,7 +155,10 @@ func get_xp_to_next_level(level: int = -1) -> int:
 
 func get_team_size_cap(level: int = -1) -> int:
 	var resolved_level: int = player_level if level == -1 else clampi(level, 1, MAX_LEVEL)
-	return TEAM_SIZE_CAPS.get(resolved_level, TEAM_SIZE_CAPS[MAX_LEVEL])
+	var base_cap: int = TEAM_SIZE_CAPS.get(resolved_level, TEAM_SIZE_CAPS[MAX_LEVEL])
+	if has_augment("tactical_reserve"):
+		base_cap += 1
+	return base_cap
 
 
 func can_field_more_units(unit_count: int, level: int = -1) -> bool:
@@ -159,6 +167,41 @@ func can_field_more_units(unit_count: int, level: int = -1) -> bool:
 
 func get_item_inventory() -> Array[String]:
 	return item_inventory.duplicate()
+
+
+func get_active_augments() -> Array[String]:
+	return active_augments.duplicate()
+
+
+func has_pending_augment_choice() -> bool:
+	return not pending_augment_choices.is_empty()
+
+
+func has_augment(augment_id: String) -> bool:
+	return active_augments.has(augment_id)
+
+
+func offer_augment_choices(options: Array[String]) -> void:
+	pending_augment_choices.clear()
+	for augment_id in options:
+		var resolved: String = str(augment_id)
+		if resolved != "" and not active_augments.has(resolved):
+			pending_augment_choices.append(resolved)
+	if pending_augment_choices.is_empty():
+		return
+	augment_choice_offered.emit(pending_augment_choices.duplicate())
+
+
+func choose_augment(augment_id: String) -> bool:
+	var resolved: String = str(augment_id)
+	if resolved == "" or not pending_augment_choices.has(resolved) or active_augments.has(resolved):
+		return false
+	active_augments.append(resolved)
+	pending_augment_choices.clear()
+	_apply_instant_augment_reward(resolved)
+	augments_changed.emit(active_augments.duplicate())
+	augment_choice_resolved.emit(resolved)
+	return true
 
 
 func get_item_inventory_size() -> int:
@@ -199,7 +242,7 @@ func remove_item_from_inventory(index: int) -> String:
 func equip_inventory_item_to_unit(index: int, unit) -> bool:
 	if unit == null or index < 0 or index >= item_inventory.size():
 		return false
-	if unit.equipped_item != "":
+	if not unit.can_equip_more_items():
 		return false
 	var item_id: String = item_inventory[index]
 	var item_data: Dictionary = DataManager.get_item(item_id)
@@ -239,12 +282,14 @@ func grant_item_reward(item_id: String, units: Array = []) -> bool:
 	var item_data: Dictionary = DataManager.get_item(item_id)
 	if item_data.is_empty():
 		return false
+	if can_store_item():
+		return add_item_to_inventory(item_id)
 	if item_data.get("auto_equip", false):
 		var target = _select_reward_target(units)
-		if target != null and target.equipped_item == "":
+		if target != null and target.can_equip_more_items():
 			target.equip_item(item_id, item_data)
 			return true
-	return add_item_to_inventory(item_id)
+	return false
 
 
 func grant_item_rewards(item_ids: Array, units: Array = []) -> Array[String]:
@@ -294,10 +339,12 @@ func start_new_game() -> void:
 	player_xp = 0
 	player_level = 1
 	current_round = 1
-	current_round_kind = "combat"
+	current_round_kind = "creep"
 	final_placement = 0
 	run_summary = {}
 	item_inventory.clear()
+	active_augments.clear()
+	pending_augment_choices.clear()
 	gold_changed.emit(player_gold)
 	health_changed.emit(player_health)
 	xp_changed.emit(player_xp, get_xp_to_next_level())
@@ -305,6 +352,7 @@ func start_new_game() -> void:
 	team_cap_changed.emit(get_team_size_cap())
 	round_kind_changed.emit(current_round_kind)
 	inventory_changed.emit(item_inventory)
+	augments_changed.emit(active_augments.duplicate())
 	round_changed.emit(current_round)
 	change_state(GameState.PREPARATION)
 
@@ -321,10 +369,20 @@ func _select_reward_target(units: Array):
 	for unit in units:
 		if unit == null or int(unit.state) == 3:
 			continue
-		if unit.equipped_item != "":
+		if not unit.can_equip_more_items():
 			continue
 		var score: int = unit.cost * 100 + unit.star_level * 25 + unit.get_attack_damage()
 		if score > best_score:
 			best_score = score
 			best = unit
 	return best
+
+
+func _apply_instant_augment_reward(augment_id: String) -> void:
+	match augment_id:
+		"golden_handshake":
+			add_gold(6)
+		"component_cache":
+			var bonus_item: String = DataManager.get_random_item("", "component")
+			if bonus_item != "":
+				add_item_to_inventory(bonus_item)

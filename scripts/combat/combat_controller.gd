@@ -65,10 +65,16 @@ func start(p_units: Array, e_units: Array) -> void:
 	for unit in player_units + enemy_units:
 		var state: Dictionary = {}
 		PassiveHandler.on_combat_start(unit, state)
+		var ability: Dictionary = DataManager.get_unit_ability(unit.unit_id)
+		unit.consume_mana()
+		unit.finish_cast()
 		_unit_state[unit.get_instance_id()] = {
 			"atk_timer": 1.0 / maxf(unit.get_attack_speed(), 0.1),
 			"passive": state,
-			"target": null
+			"target": null,
+			"ability": ability,
+			"casting": false,
+			"cast_timer": 0.0
 		}
 
 	# Assassin leap at combat start
@@ -113,6 +119,7 @@ func _process(delta: float) -> void:
 	# --- Timed effects ---
 	_tick_burn(delta)
 	_tick_slow_effects(delta)
+	_tick_casts(delta)
 
 	# --- Movement tick ---
 	_move_timer += delta
@@ -132,6 +139,8 @@ func _process(delta: float) -> void:
 func _tick_movement() -> void:
 	for unit in player_units + enemy_units:
 		if int(unit.state) == DEAD_STATE:
+			continue
+		if _is_casting(unit):
 			continue
 		var target = _acquire_target(unit)
 		if target == null:
@@ -158,6 +167,8 @@ func _tick_attacks(delta: float) -> void:
 	for unit in player_units + enemy_units:
 		if int(unit.state) == DEAD_STATE:
 			continue
+		if _is_casting(unit):
+			continue
 		var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
 		us["atk_timer"] -= delta
 		if us["atk_timer"] <= 0.0:
@@ -180,6 +191,8 @@ func _try_attack(unit, us: Dictionary) -> void:
 
 	unit.play_attack_pulse()
 	target.take_damage(final_dmg)
+	_gain_mana(unit, 20)
+	_gain_mana(target, maxi(6, int(float(final_dmg) * 0.30)))
 
 	if burn_active and int(target.state) != DEAD_STATE:
 		_apply_burn(target)
@@ -256,6 +269,10 @@ func _get_allies_of(unit) -> Array:
 func _on_unit_died(unit) -> void:
 	var is_player: bool = unit in player_units
 	var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
+	us["casting"] = false
+	us["cast_timer"] = 0.0
+	_unit_state[unit.get_instance_id()] = us
+	unit.finish_cast()
 	var nearby: Array = _get_units_within_range(unit, 1, _get_enemies_of(unit))
 	PassiveHandler.on_death(unit, us.get("passive", {}), nearby)
 
@@ -338,18 +355,20 @@ func _tick_burn(delta: float) -> void:
 
 
 func _apply_item_proc_on_hit(attacker, defender, damage_dealt: int) -> void:
-	match attacker.equipped_item:
-		"vampiric_blade":
-			var heal_amount: int = maxi(1, int(float(damage_dealt) * 0.15))
-			attacker.heal(heal_amount)
-		"frozen_heart":
-			if int(defender.state) != DEAD_STATE:
-				_apply_attack_speed_slow(defender, 2.0, 0.25)
+	for item_id in attacker.get_equipped_items():
+		match item_id:
+			"vampiric_blade":
+				var heal_amount: int = maxi(1, int(float(damage_dealt) * 0.15))
+				attacker.heal(heal_amount)
+			"frozen_heart":
+				if int(defender.state) != DEAD_STATE:
+					_apply_attack_speed_slow(defender, 2.0, 0.25)
 
-	match defender.equipped_item:
-		"thornmail":
-			var reflected: int = maxi(1, int(float(damage_dealt) * 0.20))
-			attacker.take_damage(reflected, true)
+	for item_id in defender.get_equipped_items():
+		match item_id:
+			"thornmail":
+				var reflected: int = maxi(1, int(float(damage_dealt) * 0.20))
+				attacker.take_damage(reflected, true)
 
 
 func _apply_attack_speed_slow(target, duration: float, slow_percent: float) -> void:
@@ -423,6 +442,61 @@ func _end_combat(player_won: bool) -> void:
 func _register_position(unit) -> void:
 	if unit.board_position != Vector2i(-1, -1):
 		_occupied[unit.board_position] = unit
+
+
+func _tick_casts(delta: float) -> void:
+	for unit in player_units + enemy_units:
+		if int(unit.state) == DEAD_STATE:
+			continue
+		var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
+		if not us.get("casting", false):
+			continue
+		us["cast_timer"] = float(us.get("cast_timer", 0.0)) - delta
+		if us["cast_timer"] > 0.0:
+			continue
+		us["casting"] = false
+		us["cast_timer"] = 0.0
+		_unit_state[unit.get_instance_id()] = us
+		if int(unit.state) != DEAD_STATE:
+			AbilitySystem.resolve_ability(
+				unit,
+				us.get("ability", {}),
+				_get_allies_of(unit),
+				_get_enemies_of(unit)
+			)
+			unit.finish_cast()
+			unit.state = IDLE_STATE
+			us["atk_timer"] = 1.0 / maxf(unit.get_attack_speed(), 0.1)
+			_unit_state[unit.get_instance_id()] = us
+
+
+func _gain_mana(unit, amount: int) -> void:
+	if unit == null or amount <= 0 or int(unit.state) == DEAD_STATE:
+		return
+	var id: int = unit.get_instance_id()
+	var us: Dictionary = _unit_state.get(id, {})
+	if us.get("casting", false):
+		return
+	if unit.gain_mana(amount):
+		_begin_cast(unit)
+
+
+func _begin_cast(unit) -> void:
+	var id: int = unit.get_instance_id()
+	var us: Dictionary = _unit_state.get(id, {})
+	if us.is_empty() or us.get("casting", false):
+		return
+	us["casting"] = true
+	us["cast_timer"] = float(us.get("ability", {}).get("cast_time", 0.35))
+	_unit_state[id] = us
+	unit.consume_mana()
+	unit.begin_cast()
+	unit.state = ATTACKING_STATE
+
+
+func _is_casting(unit) -> bool:
+	var us: Dictionary = _unit_state.get(unit.get_instance_id(), {})
+	return us.get("casting", false)
 
 
 func _find_free_adjacent(center: Vector2i, _mover) -> Vector2i:

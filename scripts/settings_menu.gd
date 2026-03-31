@@ -24,6 +24,7 @@ func _build_ui() -> void:
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.color = Color(0.045, 0.055, 0.075, 1.0)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	var center := CenterContainer.new()

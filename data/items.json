@@ -1,238 +1,326 @@
 {
   "items": [
-    {
-      "id": "steel_blade",
-      "name": "Steel Blade",
-      "icon": "steel_blade",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "iron_plating",
-      "name": "Iron Plating",
-      "icon": "iron_plating",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "life_crystal",
-      "name": "Life Crystal",
-      "icon": "life_crystal",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "swift_gear",
-      "name": "Swift Gear",
-      "icon": "swift_gear",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "forged_blade",
-      "name": "Forged Blade",
-      "icon": "forged_blade",
-      "description": "+40 Attack Damage",
-      "category": "crafted",
-      "combine_from": ["steel_blade", "steel_blade"],
-      "effect": "attack_damage_flat",
-      "value": 40,
-      "auto_equip": true
-    },
-    {
-      "id": "reinforced_mail",
-      "name": "Reinforced Mail",
-      "icon": "reinforced_mail",
-      "description": "+40 Armor",
-      "category": "crafted",
-      "combine_from": ["iron_plating", "iron_plating"],
-      "effect": "armor_flat",
-      "value": 40,
-      "auto_equip": true
-    },
-    {
-      "id": "giant_core",
-      "name": "Giant Core",
-      "icon": "giant_core",
-      "description": "+400 Max HP",
-      "category": "crafted",
-      "combine_from": ["life_crystal", "life_crystal"],
-      "effect": "max_hp_flat",
-      "value": 400,
-      "auto_equip": true
-    },
-    {
-      "id": "storm_bow",
-      "name": "Storm Bow",
-      "icon": "storm_bow",
-      "description": "+0.4 Attack Speed",
-      "category": "crafted",
-      "combine_from": ["swift_gear", "swift_gear"],
-      "effect": "attack_speed_flat",
-      "value": 0.4,
-      "auto_equip": true
-    },
-    {
-      "id": "iron_sword",
-      "name": "Iron Sword",
-      "icon": "iron_sword",
-      "description": "+20 Attack Damage",
-      "category": "legacy",
-      "effect": "attack_damage_flat",
-      "value": 20
-    },
-    {
-      "id": "chainmail",
-      "name": "Chainmail",
-      "icon": "chainmail",
-      "description": "+20 Armor",
-      "category": "legacy",
-      "effect": "armor_flat",
-      "value": 20
-    },
-    {
-      "id": "giants_belt",
-      "name": "Giant's Belt",
-      "icon": "giants_belt",
-      "description": "+200 Max HP",
-      "category": "legacy",
-      "effect": "max_hp_flat",
-      "value": 200
-    },
-    {
-      "id": "recurve_bow",
-      "name": "Recurve Bow",
-      "icon": "recurve_bow",
-      "description": "+0.2 Attack Speed",
-      "category": "legacy",
-      "effect": "attack_speed_flat",
-      "value": 0.2
-    },
-    {
-      "id": "vampiric_blade",
-      "name": "Vampiric Blade",
-      "icon": "vampiric_blade",
-      "description": "Heal 15% of damage dealt",
-      "category": "legacy",
-      "effect": "lifesteal_percent",
-      "value": 0.15
-    },
-    {
-      "id": "thornmail",
-      "name": "Thornmail",
-      "icon": "thornmail",
-      "description": "Reflect 20% of damage taken back to attacker",
-      "category": "legacy",
-      "effect": "damage_reflect_percent",
-      "value": 0.20
-    },
-    {
-      "id": "rage_crown",
-      "name": "Rage Crown",
-      "icon": "rage_crown",
-      "description": "+15% damage for each alive ally",
-      "category": "legacy",
-      "effect": "damage_per_ally_percent",
-      "value": 0.15
-    },
-    {
-      "id": "frozen_heart",
-      "name": "Frozen Heart",
-      "icon": "frozen_heart",
-      "description": "Attacks slow enemy attack speed by 25% for 2s",
-      "category": "legacy",
-      "effect": "attack_slow_on_hit",
-      "value": 0.25
-    },
-    {
-      "id": "ember_shard",
-      "name": "Ember Shard",
-      "icon": "ember_shard",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "bulwark_plate",
-      "name": "Bulwark Plate",
-      "icon": "bulwark_plate",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "wind_thread",
-      "name": "Wind Thread",
-      "icon": "wind_thread",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "moon_dust",
-      "name": "Moon Dust",
-      "icon": "moon_dust",
-      "description": "Crafting component",
-      "category": "component"
-    },
-    {
-      "id": "blazing_edge",
-      "name": "Blazing Edge",
-      "icon": "blazing_edge",
-      "description": "+60 Attack Damage",
-      "category": "crafted",
-      "combine_from": ["ember_shard", "steel_blade"],
-      "effect": "attack_damage_flat",
-      "value": 60,
-      "auto_equip": true
-    },
-    {
-      "id": "bastion_mail",
-      "name": "Bastion Mail",
-      "icon": "bastion_mail",
-      "description": "+60 Armor",
-      "category": "crafted",
-      "combine_from": ["bulwark_plate", "iron_plating"],
-      "effect": "armor_flat",
-      "value": 60,
-      "auto_equip": true
-    },
-    {
-      "id": "gale_serum",
-      "name": "Gale Serum",
-      "icon": "gale_serum",
-      "description": "+0.6 Attack Speed",
-      "category": "crafted",
-      "combine_from": ["wind_thread", "swift_gear"],
-      "effect": "attack_speed_flat",
-      "value": 0.6,
-      "auto_equip": true
-    },
-    {
-      "id": "elder_core",
-      "name": "Elder Core",
-      "icon": "elder_core",
-      "description": "+600 Max HP",
-      "category": "crafted",
-      "combine_from": ["moon_dust", "life_crystal"],
-      "effect": "max_hp_flat",
-      "value": 600,
-      "auto_equip": true
-    },
-    {
-      "id": "archmage_foci",
-      "name": "Archmage Foci",
-      "icon": "archmage_foci",
-      "description": "+30 Attack Damage",
-      "category": "legacy",
-      "effect": "attack_damage_flat",
-      "value": 30
-    },
-    {
-      "id": "iron_cloak",
-      "name": "Iron Cloak",
-      "icon": "iron_cloak",
-      "description": "+30 Armor",
-      "category": "legacy",
-      "effect": "armor_flat",
-      "value": 30
-    }
+	{
+	  "id": "steel_blade",
+	  "name": "Steel Blade",
+	  "icon": "steel_blade",
+	  "description": "Crafting component",
+	  "category": "component"
+	},
+	{
+	  "id": "iron_plating",
+	  "name": "Iron Plating",
+	  "icon": "iron_plating",
+	  "description": "Crafting component",
+	  "category": "component"
+	},
+	{
+	  "id": "life_crystal",
+	  "name": "Life Crystal",
+	  "icon": "life_crystal",
+	  "description": "Crafting component",
+	  "category": "component"
+	},
+	{
+	  "id": "swift_gear",
+	  "name": "Swift Gear",
+	  "icon": "swift_gear",
+	  "description": "Crafting component",
+	  "category": "component"
+	},
+	{
+	  "id": "forged_blade",
+	  "name": "Forged Blade",
+	  "icon": "forged_blade",
+	  "description": "+40 Attack Damage",
+	  "category": "crafted",
+	  "combine_from": ["steel_blade", "steel_blade"],
+	  "effect": "attack_damage_flat",
+	  "value": 40,
+	  "auto_equip": true
+	},
+	{
+	  "id": "reinforced_mail",
+	  "name": "Reinforced Mail",
+	  "icon": "reinforced_mail",
+	  "description": "+40 Armor",
+	  "category": "crafted",
+	  "combine_from": ["iron_plating", "iron_plating"],
+	  "effect": "armor_flat",
+	  "value": 40,
+	  "auto_equip": true
+	},
+	{
+	  "id": "giant_core",
+	  "name": "Giant Core",
+	  "icon": "giant_core",
+	  "description": "+400 Max HP",
+	  "category": "crafted",
+	  "combine_from": ["life_crystal", "life_crystal"],
+	  "effect": "max_hp_flat",
+	  "value": 400,
+	  "auto_equip": true
+	},
+	{
+	  "id": "storm_bow",
+	  "name": "Storm Bow",
+	  "icon": "storm_bow",
+	  "description": "+0.4 Attack Speed",
+	  "category": "crafted",
+	  "combine_from": ["swift_gear", "swift_gear"],
+	  "effect": "attack_speed_flat",
+	  "value": 0.4,
+	  "auto_equip": true
+	},
+	{
+	  "id": "iron_sword",
+	  "name": "Iron Sword",
+	  "icon": "iron_sword",
+	  "description": "+20 Attack Damage",
+	  "category": "legacy",
+	  "effect": "attack_damage_flat",
+	  "value": 20
+	},
+	{
+	  "id": "chainmail",
+	  "name": "Chainmail",
+	  "icon": "chainmail",
+	  "description": "+20 Armor",
+	  "category": "legacy",
+	  "effect": "armor_flat",
+	  "value": 20
+	},
+	{
+	  "id": "giants_belt",
+	  "name": "Giant's Belt",
+	  "icon": "giants_belt",
+	  "description": "+200 Max HP",
+	  "category": "legacy",
+	  "effect": "max_hp_flat",
+	  "value": 200
+	},
+	{
+	  "id": "recurve_bow",
+	  "name": "Recurve Bow",
+	  "icon": "recurve_bow",
+	  "description": "+0.2 Attack Speed",
+	  "category": "legacy",
+	  "effect": "attack_speed_flat",
+	  "value": 0.2
+	},
+	{
+	  "id": "vampiric_blade",
+	  "name": "Vampiric Blade",
+	  "icon": "vampiric_blade",
+	  "description": "Heal 15% of damage dealt",
+	  "category": "legacy",
+	  "effect": "lifesteal_percent",
+	  "value": 0.15
+	},
+	{
+	  "id": "thornmail",
+	  "name": "Thornmail",
+	  "icon": "thornmail",
+	  "description": "Reflect 20% of damage taken back to attacker",
+	  "category": "legacy",
+	  "effect": "damage_reflect_percent",
+	  "value": 0.20
+	},
+	{
+	  "id": "rage_crown",
+	  "name": "Rage Crown",
+	  "icon": "rage_crown",
+	  "description": "+15% damage for each alive ally",
+	  "category": "legacy",
+	  "effect": "damage_per_ally_percent",
+	  "value": 0.15
+	},
+	{
+	  "id": "frozen_heart",
+	  "name": "Frozen Heart",
+	  "icon": "frozen_heart",
+	  "description": "Attacks slow enemy attack speed by 25% for 2s",
+	  "category": "legacy",
+	  "effect": "attack_slow_on_hit",
+	  "value": 0.25
+	},
+	{
+	  "id": "ember_shard",
+	  "name": "Ember Shard",
+	  "icon": "ember_shard",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "bulwark_plate",
+	  "name": "Bulwark Plate",
+	  "icon": "bulwark_plate",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "wind_thread",
+	  "name": "Wind Thread",
+	  "icon": "wind_thread",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "moon_dust",
+	  "name": "Moon Dust",
+	  "icon": "moon_dust",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "sun_shard",
+	  "name": "Sun Shard",
+	  "icon": "sun_shard",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "mist_thread",
+	  "name": "Mist Thread",
+	  "icon": "mist_thread",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "stone_ember",
+	  "name": "Stone Ember",
+	  "icon": "stone_ember",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "wyrm_scale",
+	  "name": "Wyrm Scale",
+	  "icon": "wyrm_scale",
+	  "description": "Crafting component",
+	  "category": "component",
+	  "loot_weight": 10
+	},
+	{
+	  "id": "blazing_edge",
+	  "name": "Blazing Edge",
+	  "icon": "blazing_edge",
+	  "description": "+60 Attack Damage",
+	  "category": "crafted",
+	  "combine_from": ["ember_shard", "steel_blade"],
+	  "effect": "attack_damage_flat",
+	  "value": 60,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "bastion_mail",
+	  "name": "Bastion Mail",
+	  "icon": "bastion_mail",
+	  "description": "+60 Armor",
+	  "category": "crafted",
+	  "combine_from": ["bulwark_plate", "iron_plating"],
+	  "effect": "armor_flat",
+	  "value": 60,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "gale_serum",
+	  "name": "Gale Serum",
+	  "icon": "gale_serum",
+	  "description": "+0.6 Attack Speed",
+	  "category": "crafted",
+	  "combine_from": ["wind_thread", "swift_gear"],
+	  "effect": "attack_speed_flat",
+	  "value": 0.6,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "elder_core",
+	  "name": "Elder Core",
+	  "icon": "elder_core",
+	  "description": "+600 Max HP",
+	  "category": "crafted",
+	  "combine_from": ["moon_dust", "life_crystal"],
+	  "effect": "max_hp_flat",
+	  "value": 600,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "sunforged_plate",
+	  "name": "Sunforged Plate",
+	  "icon": "sunforged_plate",
+	  "description": "+70 Armor",
+	  "category": "crafted",
+	  "combine_from": ["sun_shard", "iron_plating"],
+	  "effect": "armor_flat",
+	  "value": 70,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "storm_lance",
+	  "name": "Storm Lance",
+	  "icon": "storm_lance",
+	  "description": "+70 Attack Damage",
+	  "category": "crafted",
+	  "combine_from": ["mist_thread", "steel_blade"],
+	  "effect": "attack_damage_flat",
+	  "value": 70,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "heartward_talisman",
+	  "name": "Heartward Talisman",
+	  "icon": "heartward_talisman",
+	  "description": "+700 Max HP",
+	  "category": "crafted",
+	  "combine_from": ["stone_ember", "life_crystal"],
+	  "effect": "max_hp_flat",
+	  "value": 700,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "phantom_quiver",
+	  "name": "Phantom Quiver",
+	  "icon": "phantom_quiver",
+	  "description": "+0.65 Attack Speed",
+	  "category": "crafted",
+	  "combine_from": ["wyrm_scale", "swift_gear"],
+	  "effect": "attack_speed_flat",
+	  "value": 0.65,
+	  "auto_equip": true,
+	  "loot_weight": 4
+	},
+	{
+	  "id": "archmage_foci",
+	  "name": "Archmage Foci",
+	  "icon": "archmage_foci",
+	  "description": "+30 Attack Damage",
+	  "category": "legacy",
+	  "effect": "attack_damage_flat",
+	  "value": 30
+	},
+	{
+	  "id": "iron_cloak",
+	  "name": "Iron Cloak",
+	  "icon": "iron_cloak",
+	  "description": "+30 Armor",
+	  "category": "legacy",
+	  "effect": "armor_flat",
+	  "value": 30
+	}
   ]
 }

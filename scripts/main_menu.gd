@@ -34,11 +34,13 @@ func _build_menu() -> void:
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.color = Color(0.055, 0.065, 0.09, 1.0)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	var accent := ColorRect.new()
 	accent.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	accent.color = Color(0.09, 0.12, 0.16, 0.18)
+	accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(accent)
 
 	var center := CenterContainer.new()

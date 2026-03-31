@@ -2,6 +2,8 @@ extends RefCounted
 
 class_name UITheme
 
+const PANEL_9SLICE: Texture2D = preload("res://assets/ui/panel_9slice.svg")
+
 # ── Backgrounds ──────────────────────────────────────────────────────────────
 const BG_DARK       := Color(0.04, 0.055, 0.09, 1.0)   # #0A0E17 — main bg
 const BG_PANEL      := Color(0.07, 0.10,  0.16, 0.97)  # #121A28 — panels
@@ -55,6 +57,14 @@ const BOARD_TILE_HOVER  := Color(0.14, 0.20, 0.32, 1.0)
 const BOARD_TILE_SELECT := Color(0.04, 0.76, 0.89, 0.25)  # teal highlight
 const BOARD_BORDER      := Color(0.20, 0.30, 0.45, 0.85)
 
+# ── Layout rhythm (base 1280x720 viewport) ──────────────────────────────────
+const TOP_BAR_HEIGHT := 40.0
+const SHOP_PANEL_HEIGHT := 132.0
+const BENCH_PANEL_HEIGHT := 52.0
+const UI_STACK_GAP := 10.0
+const SCREEN_GUTTER := 16.0
+const CONTENT_MAX_WIDTH := 1728.0
+
 
 # ── Helper: build a StyleBoxFlat ──────────────────────────────────────────────
 static func panel_style(
@@ -83,3 +93,31 @@ static func button_style(
 	radius: int = 6
 ) -> StyleBoxFlat:
 	return panel_style(bg, border, radius, 1)
+
+
+static func build_theme() -> Theme:
+	var theme := Theme.new()
+	theme.set_default_font_size(12)
+	theme.set_color("font_color", "Label", TEXT_PRIMARY)
+	theme.set_color("font_color", "Button", TEXT_PRIMARY)
+	theme.set_color("font_pressed_color", "Button", TEXT_PRIMARY)
+	theme.set_constant("outline_size", "Label", 0)
+	theme.set_stylebox("panel", "PanelContainer", panel_style())
+	theme.set_stylebox("normal", "Button", button_style(BG_PANEL_ALT, BORDER_MID, 6))
+	theme.set_stylebox("hover", "Button", button_style(BG_PANEL_ALT.lightened(0.12), BORDER_BRIGHT, 6))
+	theme.set_stylebox("pressed", "Button", button_style(BG_PANEL_ALT.darkened(0.10), BORDER_BRIGHT, 6))
+	return theme
+
+
+static func make_nine_patch() -> NinePatchRect:
+	var patch := NinePatchRect.new()
+	patch.texture = PANEL_9SLICE
+	patch.draw_center = true
+	patch.patch_margin_left = 12
+	patch.patch_margin_top = 12
+	patch.patch_margin_right = 12
+	patch.patch_margin_bottom = 12
+	patch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	patch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	patch.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return patch

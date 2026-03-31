@@ -1,0 +1,60 @@
+{
+  "opponents": [
+    {
+      "id": "mira",
+      "name": "Mira",
+      "title": "Frontline Captain",
+      "avatar": "npc_avatar",
+      "style": "frontline"
+    },
+    {
+      "id": "sol",
+      "name": "Sol",
+      "title": "Sunlit Caster",
+      "avatar": "npc_avatar",
+      "style": "burst"
+    },
+    {
+      "id": "brakk",
+      "name": "Brakk",
+      "title": "Arena Brute",
+      "avatar": "npc_avatar",
+      "style": "bruiser"
+    },
+    {
+      "id": "nyx",
+      "name": "Nyx",
+      "title": "Shadow Duelist",
+      "avatar": "npc_avatar",
+      "style": "assassin"
+    },
+    {
+      "id": "vale",
+      "name": "Vale",
+      "title": "Arcane Planner",
+      "avatar": "npc_avatar",
+      "style": "mage"
+    },
+    {
+      "id": "orin",
+      "name": "Orin",
+      "title": "Measured Tactician",
+      "avatar": "npc_avatar",
+      "style": "control"
+    },
+    {
+      "id": "sable",
+      "name": "Sable",
+      "title": "Late-Game Greed",
+      "avatar": "npc_avatar",
+      "style": "economy"
+    },
+    {
+      "id": "kest",
+      "name": "Kest",
+      "title": "Adaptive Skirmisher",
+      "avatar": "npc_avatar",
+      "style": "tempo"
+    }
+  ]
+}

@@ -25,17 +25,22 @@ var combat_controller = null
 var enemy_spawner = null
 var enemy_units: Array = []
 var current_round_data: Dictionary = {}
-var current_round_kind: String = "combat"
+var current_round_kind: String = "creep"
 var current_opponent_index: int = 0
+var current_opponent_profile: Dictionary = {}
+var opponent_lobby: Array = []
 var _player_prep_positions: Dictionary = {}
+var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 signal phase_changed(phase: Phase)
 signal prep_timer_updated(seconds_left: float)
 signal combat_finished(player_won: bool)
 signal game_over()
+signal round_context_changed(round_data: Dictionary, opponent_profile: Dictionary, lobby: Array, opponent_index: int)
 
 
 func _ready() -> void:
+	_loot_rng.randomize()
 	board_ui = get_node_or_null("BoardUI")
 	bench_ui = get_node_or_null("BenchUI")
 	hud_ui = get_node_or_null("HudUI")
@@ -58,11 +63,13 @@ func _ready() -> void:
 		board_ui.set_team_capacity(GameManager.get_team_size_cap())
 
 	GameManager.level_changed.connect(_on_level_changed)
+	GameManager.augment_choice_resolved.connect(_on_augment_choice_resolved)
 	combat_finished.connect(_on_combat_finished)
 	game_over.connect(_on_game_over)
 
 	ShopManager.reset_for_new_game()
 	GameManager.start_new_game()
+	opponent_lobby = _build_opponent_lobby()
 	_refresh_board_state()
 	start_round(false)
 
@@ -88,7 +95,7 @@ func _enter_preparation() -> void:
 
 
 func _enter_combat() -> void:
-	if current_round_kind != "combat":
+	if not _is_battle_round():
 		_resolve_special_round()
 		return
 	current_phase = Phase.COMBAT
@@ -120,7 +127,7 @@ func _process(delta: float) -> void:
 
 func skip_prep() -> void:
 	if current_phase == Phase.PREPARATION:
-		if current_round_kind == "combat":
+		if _is_battle_round():
 			_enter_combat()
 		else:
 			_resolve_special_round()
@@ -167,6 +174,7 @@ func _apply_synergies_to_board() -> void:
 	var player_units: Array = _get_player_units()
 	var active := TraitSystem.get_active_synergies(player_units)
 	TraitSystem.apply_synergies(player_units, active)
+	_apply_augments_to_board(player_units)
 
 
 func _grant_round_income() -> void:
@@ -178,12 +186,20 @@ func _grant_round_income() -> void:
 		human_bonus
 	)
 	GameManager.add_gold(income.get("total", 0))
+	if GameManager.has_augment("silver_spoon"):
+		GameManager.add_gold(2)
 
 
 func _resolve_special_round() -> void:
 	_restore_player_prep_positions()
 	current_phase = Phase.RESULT
 	phase_changed.emit(Phase.RESULT)
+	var reward: Dictionary = current_round_data.get("reward", {})
+	if bool(reward.get("augment_choice", false)):
+		var options: Array[String] = DataManager.get_random_augments(3, GameManager.get_active_augments(), _loot_rng)
+		if not options.is_empty():
+			GameManager.offer_augment_choices(options)
+			return
 	_grant_round_reward()
 	combat_finished.emit(true)
 	_advance_round_or_finish("special")
@@ -197,13 +213,41 @@ func _grant_round_reward() -> void:
 	if gold_reward > 0:
 		GameManager.add_gold(gold_reward)
 
-	var item_ids: Array = reward.get("items", [])
-	if item_ids.is_empty():
-		var item_count: int = reward.get("item_count", 0)
-		var item_category: String = reward.get("item_category", "")
-		if item_count > 0:
-			item_ids = DataManager.get_random_items(item_count, item_category)
-	GameManager.grant_item_rewards(item_ids, _get_player_units())
+	var item_ids: Array[String] = _roll_reward_items(reward)
+	var granted_items: Array[String] = GameManager.grant_item_rewards(item_ids, _get_player_units())
+	if hud_ui != null and not granted_items.is_empty() and hud_ui.has_method("show_item_rewards"):
+		hud_ui.call("show_item_rewards", granted_items)
+
+
+func _roll_reward_items(reward: Dictionary) -> Array[String]:
+	var item_ids: Array[String] = []
+	var explicit_items: Array = reward.get("items", [])
+	if not explicit_items.is_empty():
+		for item_id in explicit_items:
+			item_ids.append(str(item_id))
+		return item_ids
+
+	var item_count: int = reward.get("item_count", 0)
+	if item_count <= 0:
+		return item_ids
+
+	var item_mode: String = str(reward.get("item_mode", reward.get("item_category", "mixed")))
+	var item_category: String = str(reward.get("item_category", ""))
+	var category_filter: String = "" if item_category == "mixed" else item_category
+	var full_item_chance: float = float(reward.get("full_item_chance", 0.0))
+	var excluded: Array[String] = []
+
+	for _i in item_count:
+		var roll_mode: String = item_mode
+		if item_mode == "mixed":
+			roll_mode = "crafted" if _loot_rng.randf() < full_item_chance else "component"
+		var item_id: String = DataManager.get_random_item(category_filter, roll_mode, excluded, _loot_rng)
+		if item_id == "":
+			break
+		item_ids.append(item_id)
+		excluded.append(item_id)
+
+	return item_ids
 
 
 func _get_human_synergy_bonus() -> int:
@@ -216,6 +260,25 @@ func _get_human_synergy_bonus() -> int:
 	elif human_count >= 2:
 		return 1
 	return 0
+
+
+func _apply_augments_to_board(units: Array) -> void:
+	for unit in units:
+		if unit == null:
+			continue
+		if GameManager.has_augment("frontline_oath"):
+			unit.max_health = int(round(float(unit.max_health) * 1.12))
+			unit.current_health = unit.get_max_health()
+		if GameManager.has_augment("rapid_fire"):
+			unit.attack_speed += 0.18
+		if GameManager.has_augment("heavy_blades"):
+			unit.attack_damage = int(round(float(unit.attack_damage) * 1.15))
+		if GameManager.has_augment("arcane_charge"):
+			unit.gain_mana(20)
+		if GameManager.has_augment("stone_skin"):
+			unit.armor += 12
+		unit.health_changed.emit(unit.current_health, unit.get_max_health())
+		unit.queue_redraw()
 
 
 func _calculate_loss_damage() -> int:
@@ -233,7 +296,7 @@ func _get_player_units() -> Array:
 
 
 func _count_alive_units(units: Array) -> int:
-	return units.filter(func(unit): return int(unit.state) != unit.STATE_DEAD).size()
+	return units.filter(func(unit): return int(unit.state) != 3).size()
 
 
 func _refresh_board_state() -> void:
@@ -275,7 +338,9 @@ func _sync_round_context() -> void:
 	current_round_data = enemy_spawner.get_round_data(GameManager.current_round)
 	current_round_kind = enemy_spawner.get_round_type(GameManager.current_round)
 	current_opponent_index = _get_opponent_index(current_round_data)
+	current_opponent_profile = _resolve_opponent_profile(current_round_data, current_opponent_index)
 	GameManager.set_round_kind(current_round_kind)
+	round_context_changed.emit(current_round_data, current_opponent_profile, opponent_lobby, current_opponent_index)
 
 
 func _get_opponent_index(round_data: Dictionary) -> int:
@@ -283,6 +348,43 @@ func _get_opponent_index(round_data: Dictionary) -> int:
 	if opponents.is_empty():
 		return 0
 	return (GameManager.current_round - 1) % opponents.size()
+
+
+func _is_battle_round() -> bool:
+	return current_round_kind == "combat" or current_round_kind == "creep" or current_round_kind == "npc"
+
+
+func _resolve_opponent_profile(round_data: Dictionary, opponent_index: int) -> Dictionary:
+	var round_profile_id: String = str(round_data.get("profile_id", ""))
+	if round_profile_id != "":
+		var round_profile: Dictionary = DataManager.get_opponent(round_profile_id)
+		if not round_profile.is_empty():
+			return round_profile
+	var opponents: Array = round_data.get("opponents", [])
+	if opponents.is_empty():
+		if opponent_lobby.is_empty():
+			return {}
+		return opponent_lobby[clampi(opponent_index, 0, opponent_lobby.size() - 1)]
+	var index: int = clampi(opponent_index, 0, opponents.size() - 1)
+	var opponent_entry: Variant = opponents[index]
+	if opponent_entry is Dictionary:
+		var profile_id: String = str(opponent_entry.get("profile_id", ""))
+		if profile_id != "":
+			var profile: Dictionary = DataManager.get_opponent(profile_id)
+			if not profile.is_empty():
+				return profile
+	if opponent_lobby.is_empty():
+		return {}
+	return opponent_lobby[clampi(opponent_index, 0, opponent_lobby.size() - 1)]
+
+
+func _build_opponent_lobby() -> Array:
+	var result: Array = []
+	for opponent_id in DataManager.get_all_opponent_ids():
+		var opponent: Dictionary = DataManager.get_opponent(opponent_id)
+		if not opponent.is_empty():
+			result.append(opponent)
+	return result
 
 
 func _advance_round_or_finish(reason: String) -> void:
@@ -294,6 +396,14 @@ func _advance_round_or_finish(reason: String) -> void:
 		return
 	GameManager.next_round()
 	start_round()
+
+
+func _on_augment_choice_resolved(_augment_id: String) -> void:
+	if current_phase != Phase.RESULT:
+		return
+	_grant_round_reward()
+	combat_finished.emit(true)
+	_advance_round_or_finish("augment")
 
 
 func _finish_run(reason: String) -> void:

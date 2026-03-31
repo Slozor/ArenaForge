@@ -41,6 +41,16 @@
       "file": "ui/trait_badge.svg"
     },
     {
+      "id": "avatars",
+      "replacement_priority": "low",
+      "file": "ui/little_legend.svg"
+    },
+    {
+      "id": "npc_avatars",
+      "replacement_priority": "low",
+      "file": "ui/npc_avatar.svg"
+    },
+    {
       "id": "card_frames",
       "replacement_priority": "high",
       "file": "ui/card_frame.svg"

@@ -37,3 +37,4 @@
 - verify tap/click inspect for board and combat units in exported HTML
 - do one browser-specific UI polish pass
 - verify one exported HTML build locally before upload
+- follow the staged plan in `ITCH_IO_AND_PVP_ROADMAP.md`

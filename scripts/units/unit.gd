@@ -3,6 +3,7 @@ const STATE_IDLE: int = 0
 const STATE_MOVING: int = 1
 const STATE_ATTACKING: int = 2
 const STATE_DEAD: int = 3
+const MAX_EQUIPPED_ITEMS: int = 3
 
 const BODY_RADIUS: float = 20.0
 
@@ -13,6 +14,7 @@ const BODY_RADIUS: float = 20.0
 @export var trait_id: String = ""
 @export var cost: int = 1
 @export var star_level: int = 1
+@export var ability_id: String = ""
 
 # Base stats (set from JSON via init())
 var base_max_health: int = 0
@@ -28,6 +30,12 @@ var attack_range: int = 1
 var armor: int = 0
 var move_speed: float = 2.0
 var passive: String = ""
+var ability_name: String = ""
+var ability_description: String = ""
+var mana: int = 0
+var mana_max: int = 100
+var cast_time: float = 0.35
+var portrait_texture: Texture2D = null
 
 # Item bonuses (applied on top of base stats)
 var item_attack_damage: int = 0
@@ -36,6 +44,7 @@ var item_max_hp: int = 0
 var item_attack_speed: float = 0.0
 var temp_attack_speed_mod: float = 0.0
 var equipped_item: String = ""
+var equipped_items: Array[String] = []
 
 # Runtime
 var current_health: int = 0
@@ -51,6 +60,8 @@ var _burn_strength: float = 0.0
 var _slow_strength: float = 0.0
 var _pulse_scale: float = 1.0
 var _is_dying: bool = false
+var _cast_strength: float = 0.0
+var unit_visual_scale: float = 1.0
 
 signal died(unit)
 signal health_changed(current: int, maximum: int)
@@ -63,6 +74,8 @@ func init(data: Dictionary) -> void:
 	trait_id = data.get("trait", "")
 	cost = data.get("cost", 1)
 	passive = data.get("passive", "")
+	portrait_texture = DataManager.get_unit_portrait(unit_id)
+	_apply_ability_data(DataManager.get_unit_ability(unit_id))
 
 	var stats: Dictionary = data.get("stats", {})
 	base_max_health = stats.get("health", 500)
@@ -90,6 +103,8 @@ func reset_combat_state() -> void:
 	_slow_strength = 0.0
 	_pulse_scale = 1.0
 	_is_dying = false
+	mana = 0
+	_cast_strength = 0.0
 	scale = Vector2.ONE
 	modulate = Color.WHITE
 	health_changed.emit(current_health, get_max_health())
@@ -127,6 +142,52 @@ func get_armor() -> int:
 	return armor + item_armor
 
 
+func get_mana_ratio() -> float:
+	return clampf(float(mana) / float(max(1, mana_max)), 0.0, 1.0)
+
+
+func get_equipped_items() -> Array[String]:
+	return equipped_items.duplicate()
+
+
+func get_equipped_item_count() -> int:
+	return equipped_items.size()
+
+
+func can_equip_more_items() -> bool:
+	return equipped_items.size() < MAX_EQUIPPED_ITEMS
+
+
+func gain_mana(amount: int) -> bool:
+	if amount <= 0 or state == STATE_DEAD:
+		return mana >= mana_max
+	mana = mini(mana + amount, mana_max)
+	queue_redraw()
+	return mana >= mana_max
+
+
+func consume_mana() -> void:
+	mana = 0
+	queue_redraw()
+
+
+func begin_cast() -> void:
+	play_cast_pulse()
+
+
+func play_cast_pulse() -> void:
+	_cast_strength = 1.0
+	_flash_color = Color(0.32, 0.78, 1.0, 1.0)
+	_flash_strength = 0.9
+	_pulse_scale = 1.10
+	queue_redraw()
+
+
+func finish_cast() -> void:
+	_cast_strength = 0.0
+	queue_redraw()
+
+
 func take_damage(raw_amount: int, ignore_armor: bool = false) -> bool:
 	if state == STATE_DEAD:
 		return false
@@ -151,18 +212,14 @@ func heal(amount: int) -> void:
 
 
 func equip_item(item_id: String, item_data: Dictionary) -> void:
-	equipped_item = item_id
+	if not can_equip_more_items():
+		return
+	equipped_items.append(item_id)
+	equipped_item = equipped_items[0] if not equipped_items.is_empty() else ""
 	var effect: String = item_data.get("effect", "")
 	var value: float = item_data.get("value", 0.0)
-	match effect:
-		"attack_damage_flat":
-			item_attack_damage = int(value)
-		"armor_flat":
-			item_armor = int(value)
-		"max_hp_flat":
-			item_max_hp = int(value)
-		"attack_speed_flat":
-			item_attack_speed = value
+	_apply_item_bonus(effect, value)
+	queue_redraw()
 
 
 func upgrade_to_star(level: int) -> void:
@@ -197,9 +254,9 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	if _pulse_scale > 1.0:
 		_pulse_scale = lerpf(_pulse_scale, 1.0, minf(1.0, delta * 10.0))
-		scale = Vector2.ONE * _pulse_scale
+		scale = Vector2.ONE * unit_visual_scale * _pulse_scale
 	elif not _is_dying:
-		scale = Vector2.ONE
+		scale = Vector2.ONE * unit_visual_scale
 
 
 func _draw() -> void:
@@ -207,36 +264,29 @@ func _draw() -> void:
 	var accent_color: Color = _trait_color()
 	var cost_color: Color = _cost_color()
 	var team_ring: Color = Color(0.34, 0.72, 1.0, 0.72) if not is_enemy_unit else Color(1.0, 0.42, 0.42, 0.72)
-	var shadow_rect: Rect2 = Rect2(Vector2(-BODY_RADIUS, BODY_RADIUS * 0.65), Vector2(BODY_RADIUS * 2.0, 10))
-	draw_ellipse(
-		shadow_rect.position + shadow_rect.size * 0.5,
-		shadow_rect.size.x * 0.5,
-		shadow_rect.size.y * 0.5,
-		Color(0, 0, 0, 0.28),
-		true
-	)
-	draw_circle(Vector2.ZERO, BODY_RADIUS + 7.0, team_ring)
-	draw_circle(Vector2.ZERO, BODY_RADIUS + 5.0, cost_color.darkened(0.35))
-	draw_circle(Vector2.ZERO, BODY_RADIUS + 2.0, body_color.darkened(0.55))
-	draw_circle(Vector2.ZERO, BODY_RADIUS, body_color)
-	draw_circle(Vector2.ZERO, BODY_RADIUS * 0.45, accent_color)
-	draw_arc(Vector2.ZERO, BODY_RADIUS + 5.0, 0.0, TAU, 24, Color(1, 1, 1, 0.08), 2.0)
+	var shadow_rect: Rect2 = Rect2(Vector2(-28, 28), Vector2(56, 8))
+	draw_rect(shadow_rect, Color(0, 0, 0, 0.26), true)
+	draw_rect(Rect2(Vector2(-34, -42), Vector2(68, 72)), team_ring, false, 2.0)
+	draw_rect(Rect2(Vector2(-32, -40), Vector2(64, 68)), cost_color.darkened(0.4), false, 2.0)
+	_draw_pixel_sprite(body_color, accent_color)
 
 	if get_max_health() > 0:
 		var hp_ratio: float = clampf(float(current_health) / float(get_max_health()), 0.0, 1.0)
-		var bar_rect: Rect2 = Rect2(Vector2(-18, -30), Vector2(36, 5))
+		var bar_rect: Rect2 = Rect2(Vector2(-30, -50), Vector2(60, 6))
 		draw_rect(bar_rect, Color(0.05, 0.08, 0.12, 0.9), true)
 		draw_rect(Rect2(bar_rect.position, Vector2(bar_rect.size.x * hp_ratio, bar_rect.size.y)), Color(0.35, 0.95, 0.50, 0.95), true)
+		var mana_rect: Rect2 = Rect2(Vector2(-30, -42), Vector2(60, 5))
+		draw_rect(mana_rect, Color(0.04, 0.10, 0.16, 0.85), true)
+		draw_rect(Rect2(mana_rect.position, Vector2(mana_rect.size.x * get_mana_ratio(), mana_rect.size.y)), Color(0.28, 0.72, 1.0, 0.92), true)
 
-	if equipped_item != "":
-		draw_circle(Vector2(18, -18), 5.0, Color(1.0, 0.85, 0.35, 0.95))
+	for i in equipped_items.size():
+		draw_circle(Vector2(16 + i * 9, -28), 4.0, Color(1.0, 0.85, 0.35, 0.95))
+	if mana >= mana_max:
+		draw_circle(Vector2.ZERO, BODY_RADIUS + 9.0, Color(0.28, 0.72, 1.0, 0.18))
 
 	var font: Font = ThemeDB.fallback_font
-	if font != null:
-		var short_name: String = unit_name.substr(0, mini(3, unit_name.length())).to_upper()
-		draw_string(font, Vector2(-14, 5), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.06, 0.08, 0.12, 0.95))
-		if star_level > 1:
-			draw_string(font, Vector2(-8, 28), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.88, 0.32, 0.95))
+	if font != null and star_level > 1:
+		draw_string(font, Vector2(-8, 38), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.88, 0.32, 0.95))
 
 	if _burn_strength > 0.0:
 		draw_circle(Vector2.ZERO, BODY_RADIUS + 8.0, Color(1.0, 0.45, 0.18, 0.16 * _burn_strength))
@@ -245,6 +295,37 @@ func _draw() -> void:
 	if _flash_strength > 0.0:
 		var flash_color: Color = Color(_flash_color.r, _flash_color.g, _flash_color.b, 0.55 * _flash_strength)
 		draw_circle(Vector2.ZERO, BODY_RADIUS + 4.0, flash_color)
+	if _cast_strength > 0.0:
+		draw_circle(Vector2.ZERO, BODY_RADIUS + 12.0, Color(0.24, 0.74, 1.0, 0.10 * _cast_strength))
+
+
+func _draw_pixel_sprite(body_color: Color, accent_color: Color) -> void:
+	var dark: Color = body_color.darkened(0.35)
+	var light: Color = body_color.lightened(0.16)
+	if portrait_texture != null:
+		draw_texture_rect(portrait_texture, Rect2(Vector2(-34, -42), Vector2(68, 68)), false, Color.WHITE)
+		draw_rect(Rect2(Vector2(-36, -44), Vector2(72, 72)), accent_color.darkened(0.05), false, 2.0)
+		return
+	draw_rect(Rect2(Vector2(-18, -24), Vector2(36, 14)), light, true)
+	draw_rect(Rect2(Vector2(-20, -10), Vector2(40, 24)), body_color, true)
+	draw_rect(Rect2(Vector2(-14, 14), Vector2(10, 10)), dark, true)
+	draw_rect(Rect2(Vector2(4, 14), Vector2(10, 10)), dark, true)
+	draw_rect(Rect2(Vector2(-22, -4), Vector2(4, 16)), dark, true)
+	draw_rect(Rect2(Vector2(18, -4), Vector2(4, 16)), dark, true)
+	draw_rect(Rect2(Vector2(-20, -16), Vector2(40, 4)), accent_color, true)
+	draw_rect(Rect2(Vector2(-11, -20), Vector2(4, 4)), Color(0.08, 0.10, 0.14, 0.92), true)
+	draw_rect(Rect2(Vector2(7, -20), Vector2(4, 4)), Color(0.08, 0.10, 0.14, 0.92), true)
+	draw_rect(Rect2(Vector2(-8, -2), Vector2(16, 4)), accent_color.lightened(0.12), true)
+	match race:
+		"elf", "fae":
+			draw_rect(Rect2(Vector2(-32, -24), Vector2(4, 10)), light, true)
+			draw_rect(Rect2(Vector2(28, -24), Vector2(4, 10)), light, true)
+		"orc":
+			draw_rect(Rect2(Vector2(-18, -2), Vector2(4, 4)), Color(0.96, 0.90, 0.70, 0.95), true)
+			draw_rect(Rect2(Vector2(14, -2), Vector2(4, 4)), Color(0.96, 0.90, 0.70, 0.95), true)
+		"dragon":
+			draw_rect(Rect2(Vector2(-16, -40), Vector2(6, 6)), Color(0.98, 0.76, 0.42, 0.92), true)
+			draw_rect(Rect2(Vector2(10, -40), Vector2(6, 6)), Color(0.98, 0.76, 0.42, 0.92), true)
 
 
 func play_attack_pulse() -> void:
@@ -267,6 +348,18 @@ func play_heal_pulse() -> void:
 
 func set_burn_visual(duration_scale: float = 1.0) -> void:
 	_burn_strength = maxf(_burn_strength, duration_scale)
+
+
+func _apply_item_bonus(effect: String, value: float) -> void:
+	match effect:
+		"attack_damage_flat":
+			item_attack_damage += int(value)
+		"armor_flat":
+			item_armor += int(value)
+		"max_hp_flat":
+			item_max_hp += int(value)
+		"attack_speed_flat":
+			item_attack_speed += value
 	queue_redraw()
 
 
@@ -282,9 +375,24 @@ func play_death_pop() -> void:
 	tween.tween_property(self, "modulate", Color(1.0, 0.35, 0.35, 0.0), 0.22)
 
 
+func _apply_ability_data(data: Dictionary) -> void:
+	if data.is_empty():
+		ability_id = ""
+		ability_name = "Signature"
+		ability_description = "A signature attack unfolds when mana is full."
+		mana_max = 100
+		cast_time = 0.35
+		return
+	ability_id = str(data.get("id", ability_id))
+	ability_name = str(data.get("name", "Signature"))
+	ability_description = str(data.get("description", "A signature attack unfolds when mana is full."))
+	mana_max = maxi(1, int(data.get("mana", 100)))
+	cast_time = maxf(0.1, float(data.get("cast_time", 0.35)))
+
+
 func cancel_death_visuals() -> void:
 	_is_dying = false
-	scale = Vector2.ONE
+	scale = Vector2.ONE * unit_visual_scale
 	modulate = Color.WHITE
 	queue_redraw()
 

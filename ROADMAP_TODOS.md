@@ -52,6 +52,29 @@ Primary files:
 - `scenes/*`
 - `scripts/ui/*`
 
+## Phase 4 - Release + Multiplayer
+
+- [ ] Produce one verified browser export for itch.io.
+- [ ] Finish browser/mobile-safe inspect and touch flows.
+- [ ] Remove remaining placeholder art and missing textures.
+- [ ] Tune visibility, audio, and feedback for launch quality.
+- [ ] Stabilize combat state for replayable, network-ready resolution.
+- [ ] Add PvP lobby, matchmaking, and authoritative battle sync.
+- [ ] Add reconnect/disconnect handling and ghost/scout presentation.
+
+Owner: `Release and PvP Planning`
+Primary files:
+- `release/*`
+- `scripts/game/*`
+- `scripts/combat/*`
+- `scripts/ui/*`
+- `data/*`
+
+Status:
+- Browser release is the next shipping target.
+- PvP is intentionally planned after singleplayer and browser stability.
+- `release/ITCH_IO_AND_PVP_ROADMAP.md` holds the staged release path.
+
 ## Shared Rules
 
 - Keep changes small and data-driven.
