@@ -53,8 +53,14 @@ var current_round_kind: String = "creep"
 var item_inventory: Array[String] = []
 var active_augments: Array[String] = []
 var pending_augment_choices: Array[String] = []
+var current_encounter_id: String = ""
 var final_placement: int = 0
 var run_summary: Dictionary = {}
+var run_wins: int = 0
+var run_losses: int = 0
+var run_gold_earned: int = 0
+var run_items_earned: int = 0
+var run_special_rounds_cleared: int = 0
 
 signal state_changed(new_state: GameState)
 signal gold_changed(new_amount: int)
@@ -68,6 +74,7 @@ signal inventory_changed(items: Array[String])
 signal augments_changed(active_augments: Array[String])
 signal augment_choice_offered(options: Array[String])
 signal augment_choice_resolved(augment_id: String)
+signal encounter_changed(encounter_id: String)
 signal run_finished(summary: Dictionary)
 
 
@@ -80,6 +87,7 @@ func add_gold(amount: int) -> void:
 	if amount <= 0:
 		return
 	player_gold += amount
+	run_gold_earned += amount
 	gold_changed.emit(player_gold)
 
 
@@ -158,6 +166,8 @@ func get_team_size_cap(level: int = -1) -> int:
 	var base_cap: int = TEAM_SIZE_CAPS.get(resolved_level, TEAM_SIZE_CAPS[MAX_LEVEL])
 	if has_augment("tactical_reserve"):
 		base_cap += 1
+	if has_encounter("battle_banner"):
+		base_cap += 1
 	return base_cap
 
 
@@ -173,12 +183,24 @@ func get_active_augments() -> Array[String]:
 	return active_augments.duplicate()
 
 
+func get_current_encounter_id() -> String:
+	return current_encounter_id
+
+
+func get_current_encounter() -> Dictionary:
+	return DataManager.get_encounter(current_encounter_id)
+
+
 func has_pending_augment_choice() -> bool:
 	return not pending_augment_choices.is_empty()
 
 
 func has_augment(augment_id: String) -> bool:
 	return active_augments.has(augment_id)
+
+
+func has_encounter(encounter_id: String) -> bool:
+	return current_encounter_id == encounter_id
 
 
 func offer_augment_choices(options: Array[String]) -> void:
@@ -283,11 +305,15 @@ func grant_item_reward(item_id: String, units: Array = []) -> bool:
 	if item_data.is_empty():
 		return false
 	if can_store_item():
-		return add_item_to_inventory(item_id)
+		var stored: bool = add_item_to_inventory(item_id)
+		if stored:
+			run_items_earned += 1
+		return stored
 	if item_data.get("auto_equip", false):
 		var target = _select_reward_target(units)
 		if target != null and target.can_equip_more_items():
 			target.equip_item(item_id, item_data)
+			run_items_earned += 1
 			return true
 	return false
 
@@ -313,7 +339,16 @@ func register_run_result(placement: int, reason: String = "") -> void:
 		"reason": reason,
 		"round": current_round,
 		"level": player_level,
-		"gold": player_gold
+		"gold": player_gold,
+		"health": player_health,
+		"encounter": current_encounter_id,
+		"wins": run_wins,
+		"losses": run_losses,
+		"gold_earned": run_gold_earned,
+		"items_earned": run_items_earned,
+		"special_rounds": run_special_rounds_cleared,
+		"augments": active_augments.duplicate(),
+		"inventory": item_inventory.duplicate()
 	}
 	run_finished.emit(run_summary)
 
@@ -342,17 +377,25 @@ func start_new_game() -> void:
 	current_round_kind = "creep"
 	final_placement = 0
 	run_summary = {}
+	run_wins = 0
+	run_losses = 0
+	run_gold_earned = 0
+	run_items_earned = 0
+	run_special_rounds_cleared = 0
 	item_inventory.clear()
 	active_augments.clear()
 	pending_augment_choices.clear()
+	current_encounter_id = DataManager.get_random_encounter()
 	gold_changed.emit(player_gold)
 	health_changed.emit(player_health)
 	xp_changed.emit(player_xp, get_xp_to_next_level())
 	level_changed.emit(player_level)
+	_apply_starting_encounter()
 	team_cap_changed.emit(get_team_size_cap())
 	round_kind_changed.emit(current_round_kind)
 	inventory_changed.emit(item_inventory)
 	augments_changed.emit(active_augments.duplicate())
+	encounter_changed.emit(current_encounter_id)
 	round_changed.emit(current_round)
 	change_state(GameState.PREPARATION)
 
@@ -361,6 +404,18 @@ func next_round() -> void:
 	current_round += 1
 	round_changed.emit(current_round)
 	change_state(GameState.PREPARATION)
+
+
+func record_round_win() -> void:
+	run_wins += 1
+
+
+func record_round_loss() -> void:
+	run_losses += 1
+
+
+func record_special_round_cleared() -> void:
+	run_special_rounds_cleared += 1
 
 
 func _select_reward_target(units: Array):
@@ -382,7 +437,24 @@ func _apply_instant_augment_reward(augment_id: String) -> void:
 	match augment_id:
 		"golden_handshake":
 			add_gold(6)
+		"treasure_token":
+			add_gold(8)
 		"component_cache":
 			var bonus_item: String = DataManager.get_random_item("", "component")
 			if bonus_item != "":
 				add_item_to_inventory(bonus_item)
+		"component_cache_plus":
+			for _i in 2:
+				var extra_item: String = DataManager.get_random_item("", "component")
+				if extra_item != "":
+					add_item_to_inventory(extra_item)
+
+
+func _apply_starting_encounter() -> void:
+	match current_encounter_id:
+		"rich_opening":
+			add_gold(4)
+		"component_cache":
+			var start_item: String = DataManager.get_random_item("", "component")
+			if start_item != "":
+				add_item_to_inventory(start_item)

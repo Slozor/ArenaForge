@@ -6,7 +6,7 @@ const MAIN_MENU_SCENE: String = "res://scenes/main_menu.tscn"
 
 enum Phase { PREPARATION, COMBAT, RESULT }
 
-const TOTAL_ROUNDS: int = 12
+const TOTAL_ROUNDS: int = 15
 const PREP_TIME: float = 30.0
 const COMBAT_TIMEOUT: float = 30.0
 
@@ -31,6 +31,8 @@ var current_opponent_profile: Dictionary = {}
 var opponent_lobby: Array = []
 var _player_prep_positions: Dictionary = {}
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _pending_reward_choices: Dictionary = {}
+var _special_reward_claimed: bool = false
 
 signal phase_changed(phase: Phase)
 signal prep_timer_updated(seconds_left: float)
@@ -76,6 +78,8 @@ func _ready() -> void:
 	if hud_ui != null:
 		hud_ui.restart_requested.connect(_restart_run)
 		hud_ui.menu_requested.connect(_return_to_menu)
+		if hud_ui.has_signal("selection_chosen"):
+			hud_ui.selection_chosen.connect(_on_selection_chosen)
 
 
 func start_round(grant_income: bool = true) -> void:
@@ -141,13 +145,19 @@ func on_combat_ended(player_won: bool) -> void:
 	phase_changed.emit(Phase.RESULT)
 
 	if player_won:
+		GameManager.record_round_win()
 		win_streak += 1
 		loss_streak = 0
+		if GameManager.has_encounter("second_wind"):
+			GameManager.player_health = mini(100, GameManager.player_health + 2)
+			GameManager.health_changed.emit(GameManager.player_health)
 	else:
+		GameManager.record_round_loss()
 		loss_streak += 1
 		win_streak = 0
 		var damage: int = _calculate_loss_damage()
-		GameManager.take_damage(damage)
+		if damage > 0:
+			GameManager.take_damage(damage)
 
 	combat_finished.emit(player_won)
 	_grant_round_reward()
@@ -194,9 +204,21 @@ func _resolve_special_round() -> void:
 	_restore_player_prep_positions()
 	current_phase = Phase.RESULT
 	phase_changed.emit(Phase.RESULT)
+	GameManager.record_special_round_cleared()
+	_special_reward_claimed = false
+	_pending_reward_choices.clear()
 	var reward: Dictionary = current_round_data.get("reward", {})
+	if current_round_kind == "draft":
+		_offer_draft_choice(reward)
+		return
+	if current_round_kind == "armory":
+		_offer_armory_choice(reward)
+		return
+	if current_round_kind == "loot":
+		_offer_loot_choice(reward)
+		return
 	if bool(reward.get("augment_choice", false)):
-		var options: Array[String] = DataManager.get_random_augments(3, GameManager.get_active_augments(), _loot_rng)
+		var options: Array[String] = DataManager.get_random_augments_for_round(GameManager.current_round, 3, GameManager.get_active_augments(), _loot_rng)
 		if not options.is_empty():
 			GameManager.offer_augment_choices(options)
 			return
@@ -269,24 +291,47 @@ func _apply_augments_to_board(units: Array) -> void:
 		if GameManager.has_augment("frontline_oath"):
 			unit.max_health = int(round(float(unit.max_health) * 1.12))
 			unit.current_health = unit.get_max_health()
+		if GameManager.has_augment("battle_ready"):
+			unit.current_health = mini(unit.get_max_health(), unit.current_health + int(round(float(unit.get_max_health()) * 0.10)))
 		if GameManager.has_augment("rapid_fire"):
 			unit.attack_speed += 0.18
 		if GameManager.has_augment("heavy_blades"):
 			unit.attack_damage = int(round(float(unit.attack_damage) * 1.15))
 		if GameManager.has_augment("arcane_charge"):
 			unit.gain_mana(20)
+		if GameManager.has_augment("mana_surge"):
+			unit.gain_mana(35)
 		if GameManager.has_augment("stone_skin"):
 			unit.armor += 12
+		if GameManager.has_augment("bulwark_training"):
+			unit.armor += 18
 		unit.health_changed.emit(unit.current_health, unit.get_max_health())
 		unit.queue_redraw()
 
 
 func _calculate_loss_damage() -> int:
-	return 2 + _count_alive_units(enemy_units)
+	if current_round_kind == "creep":
+		return 0
+	var stage_base: int = 2
+	if GameManager.current_round >= 14:
+		stage_base = 5
+	elif GameManager.current_round >= 11:
+		stage_base = 4
+	elif GameManager.current_round >= 8:
+		stage_base = 3
+	elif GameManager.current_round >= 5:
+		stage_base = 3
+	var surviving_enemies: int = _count_alive_units(enemy_units)
+	var survivor_bonus: int = maxi(1, int(ceil(float(surviving_enemies) * 0.5))) if surviving_enemies > 0 else 0
+	return stage_base + survivor_bonus
 
 
 func get_player_level() -> int:
 	return GameManager.get_player_level()
+
+
+func get_total_rounds() -> int:
+	return TOTAL_ROUNDS
 
 
 func _get_player_units() -> Array:
@@ -320,7 +365,7 @@ func _on_level_changed(new_level: int) -> void:
 
 func _spawn_enemy_team() -> void:
 	_clear_enemy_units()
-	enemy_units = enemy_spawner.spawn_enemy_team(GameManager.current_round, current_opponent_index)
+	enemy_units = enemy_spawner.spawn_enemy_team(GameManager.current_round, current_opponent_index, current_opponent_profile)
 	if board_ui != null:
 		for unit in enemy_units:
 			if unit != null and is_instance_valid(unit) and unit.get_parent() != board_ui:
@@ -339,14 +384,18 @@ func _sync_round_context() -> void:
 	current_round_kind = enemy_spawner.get_round_type(GameManager.current_round)
 	current_opponent_index = _get_opponent_index(current_round_data)
 	current_opponent_profile = _resolve_opponent_profile(current_round_data, current_opponent_index)
+	var context_payload: Dictionary = current_round_data.duplicate(true)
+	context_payload["preview_units"] = enemy_spawner.get_preview_units(GameManager.current_round, current_opponent_index)
 	GameManager.set_round_kind(current_round_kind)
-	round_context_changed.emit(current_round_data, current_opponent_profile, opponent_lobby, current_opponent_index)
+	round_context_changed.emit(context_payload, current_opponent_profile, opponent_lobby, current_opponent_index)
 
 
 func _get_opponent_index(round_data: Dictionary) -> int:
 	var opponents: Array = round_data.get("opponents", [])
 	if opponents.is_empty():
-		return 0
+		if str(round_data.get("profile_id", "")) != "" or opponent_lobby.is_empty():
+			return 0
+		return maxi(0, (GameManager.current_round - 1) % opponent_lobby.size())
 	return (GameManager.current_round - 1) % opponents.size()
 
 
@@ -401,16 +450,319 @@ func _advance_round_or_finish(reason: String) -> void:
 func _on_augment_choice_resolved(_augment_id: String) -> void:
 	if current_phase != Phase.RESULT:
 		return
+	if _special_reward_claimed:
+		advance_after_special_round(current_round_kind)
+		return
 	_grant_round_reward()
 	combat_finished.emit(true)
 	_advance_round_or_finish("augment")
 
 
+func _offer_loot_choice(reward: Dictionary) -> void:
+	_pending_reward_choices.clear()
+	var options: Array[Dictionary] = []
+	var used: Array[String] = []
+	var reward_gold: int = int(reward.get("gold", 0))
+	var reward_count: int = maxi(1, int(reward.get("item_count", 1)))
+	var reward_mode: String = str(reward.get("item_mode", reward.get("item_category", "mixed")))
+	var reward_category: String = str(reward.get("item_category", ""))
+	var full_item_chance: float = float(reward.get("full_item_chance", 0.0))
+	for index in 3:
+		var item_ids: Array[String] = []
+		var local_used: Array[String] = used.duplicate()
+		for _i in reward_count:
+			var roll_mode: String = reward_mode
+			if reward_mode == "mixed":
+				roll_mode = "crafted" if _loot_rng.randf() < full_item_chance else "component"
+			var item_id: String = DataManager.get_random_item("" if reward_category == "mixed" else reward_category, roll_mode, local_used, _loot_rng)
+			if item_id == "":
+				break
+			item_ids.append(item_id)
+			local_used.append(item_id)
+		if item_ids.is_empty():
+			continue
+		used.append_array(item_ids)
+		var first_item: Dictionary = DataManager.get_item(item_ids[0])
+		var choice_id: String = "loot_%d" % index
+		options.append({
+			"id": choice_id,
+			"kind": "loot_reward",
+			"name": "%s + %d Gold" % [str(first_item.get("name", item_ids[0])), reward_gold],
+			"description": _format_reward_choice_description(item_ids, reward_gold)
+		})
+		_pending_reward_choices[choice_id] = {
+			"items": item_ids,
+			"gold": reward_gold,
+			"follow_up_augment": bool(reward.get("augment_choice", false))
+		}
+	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
+		hud_ui.show_reward_choices("Choose Your Loot", options)
+
+
+func _offer_armory_choice(reward: Dictionary) -> void:
+	_pending_reward_choices.clear()
+	var options: Array[Dictionary] = []
+	var mode: String = str(reward.get("armory_mode", "component_plus"))
+	var used_items: Array[String] = []
+	var champion_themes: Array[String] = ["offense", "defense", "tempo"]
+	for index in 3:
+		var choice_id: String = "armory_%d" % index
+		var payload: Dictionary = {}
+		if mode == "champion_armory":
+			var theme: String = champion_themes[index]
+			var themed_items: Array[String] = _armory_theme_pool(theme, used_items)
+			if themed_items.is_empty():
+				payload = _build_armory_payload("crafted_plus", used_items)
+			else:
+				var chosen_id: String = themed_items[_loot_rng.randi_range(0, themed_items.size() - 1)]
+				payload = {
+					"items": [chosen_id],
+					"title": "%s Armory" % theme.capitalize()
+				}
+		else:
+			payload = _build_armory_payload(mode, used_items)
+		if payload.is_empty():
+			continue
+		var item_ids: Array[String] = payload.get("items", [])
+		used_items.append_array(item_ids)
+		payload["gold"] = int(reward.get("gold", 0))
+		payload["follow_up_augment"] = bool(reward.get("augment_choice", false))
+		_pending_reward_choices[choice_id] = payload
+		options.append({
+			"id": choice_id,
+			"kind": "loot_reward",
+			"name": str(payload.get("title", "Armory Choice")),
+			"description": _format_reward_choice_description(item_ids, int(payload.get("gold", 0)))
+		})
+	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
+		hud_ui.show_reward_choices("Choose an Armory Reward", options)
+
+
+func _offer_draft_choice(reward: Dictionary) -> void:
+	_pending_reward_choices.clear()
+	if bool(reward.get("draft_units", false)):
+		_offer_unit_draft_choice(reward)
+		return
+	var options: Array[Dictionary] = []
+	var used: Array[String] = []
+	for explicit in reward.get("items", []):
+		var item_id: String = str(explicit)
+		if item_id == "" or used.has(item_id):
+			continue
+		used.append(item_id)
+		var item_data: Dictionary = DataManager.get_item(item_id)
+		options.append({
+			"id": item_id,
+			"kind": "draft_reward",
+			"name": str(item_data.get("name", item_id)),
+			"description": DataManager.get_item_tooltip(item_id)
+		})
+	while options.size() < 3:
+		var rolled_id: String = DataManager.get_random_item("", "crafted", used, _loot_rng)
+		if rolled_id == "":
+			break
+		used.append(rolled_id)
+		var rolled_data: Dictionary = DataManager.get_item(rolled_id)
+		options.append({
+			"id": rolled_id,
+			"kind": "draft_reward",
+			"name": str(rolled_data.get("name", rolled_id)),
+			"description": DataManager.get_item_tooltip(rolled_id)
+		})
+	for option in options:
+		_pending_reward_choices[str(option.get("id", ""))] = {
+			"items": [str(option.get("id", ""))],
+			"gold": int(reward.get("gold", 0)),
+			"follow_up_augment": bool(reward.get("augment_choice", false))
+		}
+	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
+		hud_ui.show_reward_choices("Choose a Draft Reward", options)
+
+
+func _offer_unit_draft_choice(reward: Dictionary) -> void:
+	var options: Array[Dictionary] = []
+	var used: Array[String] = []
+	var draft_costs: Array = reward.get("draft_costs", [2, 2, 3])
+	for index in draft_costs.size():
+		var unit_id: String = _roll_draft_unit(int(draft_costs[index]), used)
+		if unit_id == "":
+			continue
+		used.append(unit_id)
+		var unit_data: Dictionary = DataManager.get_unit(unit_id)
+		var choice_id: String = "draft_unit_%d" % index
+		options.append({
+			"id": choice_id,
+			"kind": "draft_reward",
+			"name": str(unit_data.get("name", unit_id)),
+			"description": _format_unit_draft_description(unit_data)
+		})
+		_pending_reward_choices[choice_id] = {
+			"unit_id": unit_id,
+			"gold": int(reward.get("gold", 0)),
+			"follow_up_augment": bool(reward.get("augment_choice", false))
+		}
+	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
+		hud_ui.show_reward_choices("Choose a Recruit", options)
+
+
+func _build_armory_payload(mode: String, excluded_items: Array[String]) -> Dictionary:
+	var payload: Dictionary = {}
+	match mode:
+		"crafted_plus":
+			var crafted_id: String = DataManager.get_random_item("", "crafted", excluded_items, _loot_rng)
+			var component_id: String = DataManager.get_random_item("", "component", excluded_items, _loot_rng)
+			if crafted_id == "":
+				return {}
+			var items: Array[String] = [crafted_id]
+			if component_id != "":
+				items.append(component_id)
+			payload["items"] = items
+			payload["title"] = "%s Package" % str(DataManager.get_item(crafted_id).get("name", crafted_id))
+		"component_plus":
+			var first_component: String = DataManager.get_random_item("", "component", excluded_items, _loot_rng)
+			if first_component == "":
+				return {}
+			var local_excluded: Array[String] = excluded_items.duplicate()
+			local_excluded.append(first_component)
+			var second_component: String = DataManager.get_random_item("", "component", local_excluded, _loot_rng)
+			var items: Array[String] = [first_component]
+			if second_component != "":
+				items.append(second_component)
+			payload["items"] = items
+			payload["title"] = "Component Armory"
+		_:
+			var mixed_item: String = DataManager.get_random_item("", "mixed", excluded_items, _loot_rng)
+			if mixed_item == "":
+				return {}
+			payload["items"] = [mixed_item]
+			payload["title"] = "Armory Pick"
+	return payload
+
+
+func _armory_theme_pool(theme: String, excluded_items: Array[String]) -> Array[String]:
+	var pools: Dictionary = {
+		"offense": [
+			"forged_blade", "blazing_edge", "storm_lance", "rage_crown",
+			"vampiric_blade", "archmage_foci"
+		],
+		"defense": [
+			"reinforced_mail", "giant_core", "elder_core", "bastion_mail",
+			"sunforged_plate", "heartward_talisman", "thornmail", "iron_cloak"
+		],
+		"tempo": [
+			"storm_bow", "gale_serum", "phantom_quiver", "frozen_heart"
+		]
+	}
+	var result: Array[String] = []
+	for item_id in pools.get(theme, []):
+		var resolved_id: String = str(item_id)
+		if excluded_items.has(resolved_id):
+			continue
+		if DataManager.get_item(resolved_id).is_empty():
+			continue
+		result.append(resolved_id)
+	return result
+
+
+func _on_selection_chosen(kind: String, choice_id: String) -> void:
+	if kind != "draft_reward" and kind != "loot_reward":
+		return
+	if not _pending_reward_choices.has(choice_id):
+		return
+	var payload: Dictionary = _pending_reward_choices.get(choice_id, {})
+	var gold_reward: int = int(payload.get("gold", 0))
+	if gold_reward > 0:
+		GameManager.add_gold(gold_reward)
+	var granted_items: Array[String] = GameManager.grant_item_rewards(payload.get("items", []), _get_player_units())
+	var recruited_unit_id: String = str(payload.get("unit_id", ""))
+	if recruited_unit_id != "":
+		_grant_reward_unit(recruited_unit_id)
+	_special_reward_claimed = true
+	if hud_ui != null and hud_ui.has_method("show_item_rewards"):
+		hud_ui.show_item_rewards(granted_items)
+	_pending_reward_choices.clear()
+	if bool(payload.get("follow_up_augment", false)):
+		var options: Array[String] = DataManager.get_random_augments_for_round(GameManager.current_round, 3, GameManager.get_active_augments(), _loot_rng)
+		if not options.is_empty():
+			GameManager.offer_augment_choices(options)
+			return
+	combat_finished.emit(true)
+	advance_after_special_round(kind)
+
+
+func _grant_reward_unit(unit_id: String) -> void:
+	if unit_id == "" or bench_ui == null:
+		return
+	if bench_ui.has_method("can_accept_purchase") and not bool(bench_ui.call("can_accept_purchase", unit_id)):
+		var unit_data: Dictionary = DataManager.get_unit(unit_id)
+		var fallback_value: int = maxi(2, int(unit_data.get("cost", 1)) + 1)
+		GameManager.add_gold(fallback_value)
+		if hud_ui != null and hud_ui.has_method("show_item_rewards"):
+			hud_ui.show_item_rewards([])
+			hud_ui.show_inspect_text("Bench full. Converted %s into %d gold." % [str(unit_data.get("name", unit_id)), fallback_value])
+		return
+	bench_ui.call("add_unit_from_shop", unit_id)
+
+
+func _roll_draft_unit(cost: int, excluded: Array[String]) -> String:
+	var candidates: Array = DataManager.get_units_by_cost(cost)
+	var pool: Array[String] = []
+	for candidate in candidates:
+		var unit_id: String = str(candidate)
+		if excluded.has(unit_id):
+			continue
+		pool.append(unit_id)
+	if pool.is_empty():
+		for candidate in DataManager.get_all_unit_ids():
+			var fallback_id: String = str(candidate)
+			if excluded.has(fallback_id):
+				continue
+			pool.append(fallback_id)
+	if pool.is_empty():
+		return ""
+	return pool[_loot_rng.randi_range(0, pool.size() - 1)]
+
+
+func advance_after_special_round(reason: String) -> void:
+	_advance_round_or_finish(reason)
+
+
+func _format_reward_choice_description(item_ids: Array[String], gold_reward: int) -> String:
+	var parts: Array[String] = []
+	if gold_reward > 0:
+		parts.append("+%d Gold" % gold_reward)
+	for item_id in item_ids:
+		var item_data: Dictionary = DataManager.get_item(item_id)
+		parts.append("%s: %s" % [str(item_data.get("name", item_id)), str(item_data.get("description", ""))])
+	return "\n".join(parts)
+
+
+func _format_unit_draft_description(unit_data: Dictionary) -> String:
+	var lines: Array[String] = []
+	lines.append("%s %s" % [str(unit_data.get("race", "")).capitalize(), str(unit_data.get("trait", "")).capitalize()])
+	lines.append("%d-cost recruit" % int(unit_data.get("cost", 1)))
+	var stats: Dictionary = unit_data.get("stats", {})
+	lines.append("%d HP  %d AD  %s AS" % [
+		int(stats.get("health", 0)),
+		int(stats.get("attack_damage", 0)),
+		str(stats.get("attack_speed", 0.0))
+	])
+	return "\n".join(lines)
+
+
 func _finish_run(reason: String) -> void:
-	var placement: int = maxi(1, TOTAL_ROUNDS - GameManager.current_round + 1)
+	var placement: int = _calculate_run_placement(reason)
 	GameManager.register_run_result(placement, reason)
 	GameManager.change_state(GameManager.GameState.GAME_OVER)
 	game_over.emit()
+
+
+func _calculate_run_placement(reason: String) -> int:
+	if reason == "victory" or GameManager.current_round >= TOTAL_ROUNDS:
+		return 1
+	var progress_ratio: float = clampf(float(GameManager.current_round) / float(TOTAL_ROUNDS), 0.0, 1.0)
+	var placement: int = 8 - int(floor(progress_ratio * 7.0))
+	return clampi(placement, 2, 8)
 
 
 func _on_combat_finished(player_won: bool) -> void:

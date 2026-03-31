@@ -8,6 +8,7 @@ var rounds: Dictionary = {}      # round_num -> round data dict
 var opponents: Dictionary = {}   # opponent_id -> opponent profile dict
 var opponent_order: Array[String] = []
 var augments: Dictionary = {}    # augment_id -> augment data dict
+var encounters: Dictionary = {}  # encounter_id -> encounter data dict
 var _tiny_dungeon_portraits: Dictionary = {
 	"iron_guard": "res://assets/kenney_tiny_dungeon/Tiles/tile_0087.png",
 	"watchman": "res://assets/kenney_tiny_dungeon/Tiles/tile_0085.png",
@@ -49,6 +50,7 @@ func _ready() -> void:
 	_load_rounds()
 	_load_opponents()
 	_load_augments()
+	_load_encounters()
 
 
 func _load_units() -> void:
@@ -144,6 +146,61 @@ func _load_augments() -> void:
 			"name": "Component Cache",
 			"tier": "silver",
 			"description": "Gain a random component immediately."
+		},
+		"battle_ready": {
+			"id": "battle_ready",
+			"name": "Battle Ready",
+			"tier": "silver",
+			"description": "Your team starts combat with 10% bonus max health as healing."
+		},
+		"mana_surge": {
+			"id": "mana_surge",
+			"name": "Mana Surge",
+			"tier": "gold",
+			"description": "Your team starts combat with 35 mana."
+		},
+		"bulwark_training": {
+			"id": "bulwark_training",
+			"name": "Bulwark Training",
+			"tier": "silver",
+			"description": "Your team gains 18 armor."
+		},
+		"treasure_token": {
+			"id": "treasure_token",
+			"name": "Treasure Token",
+			"tier": "silver",
+			"description": "Gain 8 gold immediately."
+		},
+		"component_cache_plus": {
+			"id": "component_cache_plus",
+			"name": "Component Cache+",
+			"tier": "gold",
+			"description": "Gain 2 random components immediately."
+		}
+	}
+
+
+func _load_encounters() -> void:
+	encounters = {
+		"rich_opening": {
+			"id": "rich_opening",
+			"name": "Rich Opening",
+			"description": "Start the run with 4 extra gold."
+		},
+		"component_cache": {
+			"id": "component_cache",
+			"name": "Component Cache",
+			"description": "Start the run with a random component."
+		},
+		"battle_banner": {
+			"id": "battle_banner",
+			"name": "Battle Banner",
+			"description": "Your team capacity is increased by 1 for the whole run."
+		},
+		"second_wind": {
+			"id": "second_wind",
+			"name": "Second Wind",
+			"description": "Winning a combat restores 2 health."
 		}
 	}
 
@@ -390,6 +447,32 @@ func get_random_augments(count: int, excluded: Array = [], rng: RandomNumberGene
 	return choices
 
 
+func get_random_augments_for_round(round_num: int, count: int, excluded: Array = [], rng: RandomNumberGenerator = null) -> Array[String]:
+	var allowed_tiers: Array[String] = ["silver"]
+	if round_num >= 8:
+		allowed_tiers.append("gold")
+	var choices: Array[String] = []
+	var pool: Array[String] = []
+	for augment_id in augments.keys():
+		if excluded.has(augment_id):
+			continue
+		var augment: Dictionary = get_augment(str(augment_id))
+		var tier: String = str(augment.get("tier", "silver"))
+		if not allowed_tiers.has(tier):
+			continue
+		pool.append(str(augment_id))
+	if pool.is_empty():
+		return get_random_augments(count, excluded, rng)
+	var picker: RandomNumberGenerator = rng if rng != null else RandomNumberGenerator.new()
+	if rng == null:
+		picker.randomize()
+	while choices.size() < count and not pool.is_empty():
+		var index: int = picker.randi_range(0, pool.size() - 1)
+		choices.append(pool[index])
+		pool.remove_at(index)
+	return choices
+
+
 func get_augment_tooltip(augment_id: String) -> String:
 	var augment: Dictionary = get_augment(augment_id)
 	if augment.is_empty():
@@ -399,6 +482,27 @@ func get_augment_tooltip(augment_id: String) -> String:
 	lines.append("%s Augment" % str(augment.get("tier", "silver")).capitalize())
 	lines.append(str(augment.get("description", "")))
 	return "\n".join(lines)
+
+
+func get_encounter(encounter_id: String) -> Dictionary:
+	return encounters.get(encounter_id, {})
+
+
+func get_random_encounter(rng: RandomNumberGenerator = null) -> String:
+	if encounters.is_empty():
+		return ""
+	var keys: Array = encounters.keys()
+	var picker: RandomNumberGenerator = rng if rng != null else RandomNumberGenerator.new()
+	if rng == null:
+		picker.randomize()
+	return str(keys[picker.randi_range(0, keys.size() - 1)])
+
+
+func get_encounter_tooltip(encounter_id: String) -> String:
+	var encounter: Dictionary = get_encounter(encounter_id)
+	if encounter.is_empty():
+		return ""
+	return "%s\n%s" % [str(encounter.get("name", encounter_id)), str(encounter.get("description", ""))]
 
 
 func get_all_round_numbers() -> Array:

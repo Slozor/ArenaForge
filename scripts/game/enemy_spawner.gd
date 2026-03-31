@@ -22,14 +22,14 @@ func _ready() -> void:
 # Returns an array with all enemy units placed on the enemy side of the
 # board (rows 0-3, back rows first). Board positions use the full 7x8 coordinate
 # space where row 0 is the enemy back row and row 7 is the player's back row.
-func spawn_enemy_team(round_num: int, opponent_index: int = -1) -> Array:
+func spawn_enemy_team(round_num: int, opponent_index: int = -1, opponent_profile: Dictionary = {}) -> Array:
 	var round_entry: Dictionary = get_round_data(round_num)
 	if round_entry.is_empty():
 		push_error("EnemySpawner: no data for round %d" % round_num)
 		return []
 
 	var unit_ids: Array = _resolve_unit_ids(round_entry, opponent_index)
-	var positions: Array[Vector2i] = _build_positions(unit_ids.size())
+	var positions: Array[Vector2i] = _build_positions_for_style(unit_ids.size(), str(opponent_profile.get("style", "default")))
 	var spawned: Array = []
 
 	for i in unit_ids.size():
@@ -71,6 +71,15 @@ func get_opponent_count(round_num: int) -> int:
 	return opponents.size()
 
 
+func get_preview_units(round_num: int, opponent_index: int = -1) -> Array[String]:
+	var round_entry: Dictionary = get_round_data(round_num)
+	var raw_units: Array = _resolve_unit_ids(round_entry, opponent_index)
+	var result: Array[String] = []
+	for unit_id in raw_units:
+		result.append(str(unit_id))
+	return result
+
+
 # ── Position layout ───────────────────────────────────────────────────────────
 
 # Generates board positions for `count` units. Units are placed in back rows
@@ -88,6 +97,59 @@ func _build_positions(count: int) -> Array[Vector2i]:
 			positions.append(Vector2i(col, row))
 		remaining -= in_this_row
 
+	return positions
+
+
+func _build_positions_for_style(count: int, style: String) -> Array[Vector2i]:
+	match style:
+		"frontline", "bruiser":
+			return _build_positions_from_row_order(count, [3, 2, 1, 0], true)
+		"burst", "mage":
+			return _build_positions_from_row_order(count, [0, 1, 2, 3], false)
+		"assassin":
+			return _build_assassin_positions(count)
+		"tempo", "control":
+			return _build_positions_from_row_order(count, [1, 2, 0, 3], false)
+		"economy":
+			return _build_positions_from_row_order(count, [2, 1, 3, 0], false)
+		_:
+			return _build_positions(count)
+
+
+func _build_positions_from_row_order(count: int, row_order: Array, center_bias: bool) -> Array[Vector2i]:
+	var positions: Array[Vector2i] = []
+	var remaining: int = count
+	for row_value in row_order:
+		if remaining <= 0:
+			break
+		var row: int = int(row_value)
+		var in_this_row: int = mini(remaining, COLS)
+		var col_positions: Array[int] = _spread_columns(in_this_row, COLS)
+		if center_bias:
+			col_positions.sort_custom(func(a, b): return abs(a - 3) < abs(b - 3))
+		for col in col_positions:
+			positions.append(Vector2i(col, row))
+		remaining -= in_this_row
+	return positions
+
+
+func _build_assassin_positions(count: int) -> Array[Vector2i]:
+	var pattern: Array[Vector2i] = [
+		Vector2i(0, 1), Vector2i(6, 1), Vector2i(1, 0), Vector2i(5, 0),
+		Vector2i(2, 1), Vector2i(4, 1), Vector2i(3, 0), Vector2i(3, 2),
+		Vector2i(1, 2), Vector2i(5, 2), Vector2i(2, 3), Vector2i(4, 3)
+	]
+	var positions: Array[Vector2i] = []
+	for cell in pattern:
+		if positions.size() >= count:
+			break
+		positions.append(cell)
+	if positions.size() < count:
+		for cell in _build_positions(count):
+			if positions.size() >= count:
+				break
+			if not positions.has(cell):
+				positions.append(cell)
 	return positions
 
 

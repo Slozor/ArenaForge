@@ -3,6 +3,7 @@
     {
       "round": 1,
       "type": "creep",
+      "label": "Opening Creeps",
       "opponents": [
         { "id": "frontline_open", "profile_id": "mira", "units": ["iron_guard", "bone_walker"] },
         { "id": "greedy_open", "profile_id": "sable", "units": ["watchman", "bone_walker"] }
@@ -17,6 +18,7 @@
     {
       "round": 2,
       "type": "creep",
+      "label": "Treasure Wolves",
       "units": ["iron_guard", "bone_walker", "elven_archer"],
       "reward": {
         "item_count": 1,
@@ -27,6 +29,7 @@
     {
       "round": 3,
       "type": "creep",
+      "label": "Early Scramble",
       "units": ["bone_walker", "elven_archer", "iron_guard"],
       "reward": {
         "item_count": 2,
@@ -37,7 +40,8 @@
     },
     {
       "round": 4,
-      "type": "loot",
+      "type": "armory",
+      "label": "Opening Armory",
       "units": [],
       "reward": {
         "gold": 4,
@@ -45,76 +49,147 @@
         "item_category": "mixed",
         "item_mode": "mixed",
         "full_item_chance": 0.45,
+        "armory_mode": "component_plus",
         "augment_choice": true
       }
     },
     {
       "round": 5,
       "type": "npc",
+      "label": "First Duel",
       "profile_id": "sol",
       "units": ["bone_walker", "bone_walker", "iron_guard", "stone_breaker"],
-      "reward": {}
+      "reward": {
+        "gold": 2
+      }
     },
     {
       "round": 6,
       "type": "npc",
+      "label": "Style Match",
       "opponents": [
         { "id": "ranged_pressure", "profile_id": "vale", "units": ["glade_sage", "lumen_ranger", "scout"] },
         { "id": "frontline_pressure", "profile_id": "brakk", "units": ["crag_chief", "oak_sentinel", "grave_archer"] }
       ],
       "units": ["crag_chief", "lumen_ranger", "forge_shaman", "ember_raider"],
-      "reward": {}
+      "reward": {
+        "gold": 2
+      }
     },
     {
       "round": 7,
       "type": "npc",
+      "label": "Pressure Test",
       "profile_id": "kest",
       "units": ["siegebreaker", "mirth_blade", "thornwarden", "bone_walker", "iron_guard"],
-      "reward": {}
+      "reward": {
+        "gold": 3
+      }
     },
     {
       "round": 8,
       "type": "draft",
+      "label": "Recruit Draft",
       "units": [],
       "reward": {
         "gold": 2,
-        "items": ["storm_bow"],
+        "draft_units": true,
+        "draft_costs": [2, 3, 3],
         "augment_choice": true
       }
     },
     {
       "round": 9,
       "type": "npc",
+      "label": "Midgame Clash",
       "profile_id": "sable",
       "units": ["siegebreaker", "thornwarden", "moonweaver", "ash_duelist", "lumen_ranger", "runesmith"],
-      "reward": {}
+      "reward": {
+        "gold": 3
+      }
     },
     {
       "round": 10,
       "type": "npc",
+      "label": "Counter Round",
       "opponents": [
         { "id": "pressure_sweep", "profile_id": "nyx", "units": ["ash_duelist", "mirth_blade", "thornwarden", "scout", "paladin", "stone_breaker"] },
         { "id": "frontline_cast", "profile_id": "orin", "units": ["silver_paladin", "moonweaver", "storm_adept", "oak_sentinel"] }
       ],
       "units": ["ash_duelist", "mirth_blade", "thornwarden", "scout", "silver_paladin", "storm_adept"],
-      "reward": {}
+      "reward": {
+        "gold": 4,
+        "item_count": 1,
+        "item_category": "component",
+        "item_mode": "component"
+      }
     },
     {
       "round": 11,
       "type": "npc",
+      "label": "Dragon Pressure",
       "profile_id": "mira",
       "units": ["crag_chief", "ember_raider", "forge_shaman", "mirth_blade", "moonweaver", "dragon_knight"],
-      "reward": {}
+      "reward": {
+        "gold": 5,
+        "item_count": 1,
+        "item_category": "component",
+        "item_mode": "component"
+      }
     },
     {
       "round": 12,
-      "type": "npc",
+      "type": "armory",
+      "label": "Treasure Armory",
       "profile_id": "orin",
       "units": ["crag_chief", "siegebreaker", "thornwarden", "ash_duelist", "moonweaver", "spellblade", "ember_witch"],
       "reward": {
         "gold": 8,
         "item_count": 1,
-        "item_category": "crafted"
+        "item_category": "crafted",
+        "armory_mode": "champion_armory"
+      }
+    },
+    {
+      "round": 13,
+      "type": "draft",
+      "label": "Champion Draft",
+      "units": [],
+      "reward": {
+        "gold": 4,
+        "draft_units": true,
+        "draft_costs": [3, 4, 4],
+        "augment_choice": true
+      }
+    },
+    {
+      "round": 14,
+      "type": "npc",
+      "label": "Late Game Wall",
+      "opponents": [
+        { "id": "burst_wall", "profile_id": "vale", "units": ["storm_adept", "moonweaver", "silver_paladin", "stone_bulwark", "grave_archer", "glade_sage"] },
+        { "id": "tempo_wall", "profile_id": "kest", "units": ["mirth_blade", "ash_duelist", "siegebreaker", "thornwarden", "watchman", "lumen_ranger"] }
+      ],
+      "units": ["storm_adept", "moonweaver", "silver_paladin", "stone_bulwark", "grave_archer", "glade_sage"],
+      "reward": {
+        "gold": 6,
+        "item_count": 1,
+        "item_category": "mixed",
+        "item_mode": "mixed",
+        "full_item_chance": 0.50
+      }
+    },
+    {
+      "round": 15,
+      "type": "npc",
+      "label": "Final Duel",
+      "profile_id": "nyx",
+      "units": ["dragon_knight", "ember_witch", "spellblade", "soul_reaper", "thornwarden", "silver_paladin", "siegebreaker"],
+      "reward": {
+        "gold": 12,
+        "item_count": 2,
+        "item_category": "crafted",
+        "item_mode": "crafted"
       }
     }
   ]

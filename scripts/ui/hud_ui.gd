@@ -38,6 +38,7 @@ var _inventory_buttons: Array[Button] = []
 var _opponent_panel: PanelContainer = null
 var _opponent_name: Label = null
 var _opponent_round: Label = null
+var _opponent_hint: Label = null
 var _opponent_row: HBoxContainer = null
 
 var _inspect_panel: PanelContainer = null
@@ -51,6 +52,9 @@ var _overlay_title: Label = null
 var _overlay_body: Label = null
 var _restart_btn: Button = null
 var _menu_btn: Button = null
+var _announce_panel: PanelContainer = null
+var _announce_title: Label = null
+var _announce_body: Label = null
 
 var _augment_panel: PanelContainer = null
 var _augment_title: Label = null
@@ -60,10 +64,14 @@ var _round_context: Dictionary = {}
 var _round_opponent: Dictionary = {}
 var _round_lobby: Array = []
 var _round_opponent_index: int = 0
+var _active_trait_count: int = 0
+var _default_inspect_text: String = ""
+var _announce_token: int = 0
 
 signal skip_prep_pressed()
 signal restart_requested()
 signal menu_requested()
+signal selection_chosen(kind: String, choice_id: String)
 
 
 func _ready() -> void:
@@ -86,6 +94,7 @@ func _ready() -> void:
 	GameManager.inventory_changed.connect(_on_inventory_changed)
 	GameManager.augment_choice_offered.connect(_on_augment_choice_offered)
 	GameManager.augments_changed.connect(_on_augments_changed)
+	GameManager.encounter_changed.connect(_on_encounter_changed)
 	GameManager.run_finished.connect(_on_run_finished)
 	if not resized.is_connected(_refresh_layout):
 		resized.connect(_refresh_layout)
@@ -101,6 +110,7 @@ func _build_ui() -> void:
 	_build_inspect()
 	_build_loot()
 	_build_overlay()
+	_build_announce_panel()
 	_build_augment_panel()
 
 
@@ -150,7 +160,7 @@ func _build_top_bar() -> void:
 
 	_round_label = Label.new()
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_round_label.custom_minimum_size = Vector2(260, 22)
+	_round_label.custom_minimum_size = Vector2(180, 20)
 	_round_label.add_theme_font_size_override("font_size", 16)
 	_round_label.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
 	row.add_child(_round_label)
@@ -165,27 +175,27 @@ func _build_top_bar() -> void:
 
 	_phase_label = Label.new()
 	_phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_phase_label.add_theme_font_size_override("font_size", 10)
+	_phase_label.add_theme_font_size_override("font_size", 9)
 	_phase_label.add_theme_color_override("font_color", UITheme.TEAL)
 	right_box.add_child(_phase_label)
 
 	var counts_row := HBoxContainer.new()
-	counts_row.add_theme_constant_override("separation", 8)
+	counts_row.add_theme_constant_override("separation", 6)
 	right_box.add_child(counts_row)
 
 	_team_label = Label.new()
-	_team_label.add_theme_font_size_override("font_size", 10)
+	_team_label.add_theme_font_size_override("font_size", 9)
 	_team_label.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
 	counts_row.add_child(_team_label)
 
 	_bench_label = Label.new()
-	_bench_label.add_theme_font_size_override("font_size", 10)
+	_bench_label.add_theme_font_size_override("font_size", 9)
 	_bench_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	counts_row.add_child(_bench_label)
 
 	_skip_btn = Button.new()
 	_skip_btn.text = "Ready"
-	_skip_btn.custom_minimum_size = Vector2(96, 28)
+	_skip_btn.custom_minimum_size = Vector2(88, 28)
 	_skip_btn.add_theme_stylebox_override("normal", UITheme.button_style(UITheme.GREEN_HP.darkened(0.55), UITheme.GREEN_HP, 6))
 	_skip_btn.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
 	_skip_btn.add_theme_font_size_override("font_size", 12)
@@ -216,14 +226,13 @@ func _build_inventory() -> void:
 	_inventory_panel = PanelContainer.new()
 	_inventory_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	add_child(_inventory_panel)
-	_inventory_panel.add_child(UITheme.make_nine_patch())
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.add_theme_constant_override("margin_left", 2)
+	margin.add_theme_constant_override("margin_right", 2)
+	margin.add_theme_constant_override("margin_top", 2)
+	margin.add_theme_constant_override("margin_bottom", 2)
 	_inventory_panel.add_child(margin)
 
 	_inventory_row = HBoxContainer.new()
@@ -297,6 +306,12 @@ func _build_opponent_panel() -> void:
 	_opponent_round.add_theme_font_size_override("font_size", 11)
 	_opponent_round.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
 	box.add_child(_opponent_round)
+
+	_opponent_hint = Label.new()
+	_opponent_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_opponent_hint.add_theme_font_size_override("font_size", 9)
+	_opponent_hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(_opponent_hint)
 
 	_opponent_row = HBoxContainer.new()
 	_opponent_row.add_theme_constant_override("separation", 6)
@@ -401,6 +416,38 @@ func _build_overlay() -> void:
 	buttons.add_child(_menu_btn)
 
 
+func _build_announce_panel() -> void:
+	_announce_panel = PanelContainer.new()
+	_announce_panel.visible = false
+	_announce_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	add_child(_announce_panel)
+	_announce_panel.add_child(UITheme.make_nine_patch())
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_announce_panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	margin.add_child(box)
+
+	_announce_title = Label.new()
+	_announce_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_announce_title.add_theme_font_size_override("font_size", 15)
+	_announce_title.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
+	box.add_child(_announce_title)
+
+	_announce_body = Label.new()
+	_announce_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_announce_body.add_theme_font_size_override("font_size", 10)
+	_announce_body.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
+	box.add_child(_announce_body)
+
+
 func _build_augment_panel() -> void:
 	_augment_panel = PanelContainer.new()
 	_augment_panel.visible = false
@@ -441,8 +488,8 @@ func _build_augment_panel() -> void:
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = minf(maxf(1280.0, view_size.x - UITheme.SCREEN_GUTTER * 2.0), UITheme.CONTENT_MAX_WIDTH)
-	var left_x: float = round((view_size.x - width) * 0.5)
+	var width: float = UITheme.content_width(view_size)
+	var left_x: float = UITheme.content_left(view_size)
 	var top_y: float = UITheme.SCREEN_GUTTER
 	size = view_size
 
@@ -453,23 +500,43 @@ func _refresh_layout() -> void:
 	var board_bottom: float = view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.UI_STACK_GAP - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP
 	var board_h: float = maxf(220.0, board_bottom - board_top)
 
-	_trait_panel.position = Vector2(left_x, board_top)
-	_trait_panel.size = Vector2(120, minf(220.0, board_h))
+	var trait_height: float = 0.0
+	var trait_width: float = 0.0
+	if _trait_list != null:
+		trait_height = clampf(_trait_list.get_combined_minimum_size().y + 20.0, 56.0, minf(160.0, board_h - 16.0))
+		trait_width = clampf(_trait_list.get_combined_minimum_size().x + 22.0, 68.0, 96.0)
+	_trait_panel.visible = _active_trait_count > 0
+	if _trait_panel.visible:
+		_trait_panel.position = Vector2(left_x, board_top + 8.0)
+		_trait_panel.size = Vector2(trait_width, trait_height)
+	else:
+		_trait_panel.position = Vector2(-1000, -1000)
+		_trait_panel.size = Vector2.ZERO
 
-	_opponent_panel.position = Vector2(left_x + width - 220.0, board_top + 56.0)
-	_opponent_panel.size = Vector2(200, 120)
+	_opponent_panel.position = Vector2(left_x + width - 172.0, board_top + 46.0)
+	_opponent_panel.size = Vector2(152, 110)
 
-	_inventory_panel.position = Vector2(left_x + 132.0, top_y + 2.0)
-	_inventory_panel.size = Vector2(260, 30)
+	var inventory_size: int = GameManager.get_item_inventory_size()
+	_inventory_panel.visible = inventory_size > 0
+	if _inventory_panel.visible:
+		var inventory_w: float = clampf(18.0 + float(mini(inventory_size, 6)) * 22.0, 72.0, 152.0)
+		_inventory_panel.position = Vector2(left_x + 132.0, top_y + 3.0)
+		_inventory_panel.size = Vector2(inventory_w, 20)
+	else:
+		_inventory_panel.position = Vector2(-1000, -1000)
+		_inventory_panel.size = Vector2.ZERO
 
-	_inspect_panel.position = Vector2(left_x + width - 260.0, board_top + 186.0)
-	_inspect_panel.size = Vector2(240, 140)
+	_inspect_panel.position = Vector2(left_x + width - 248.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 114.0)
+	_inspect_panel.size = Vector2(228, 92)
 
 	_loot_panel.position = Vector2(left_x + width - 260.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 84.0)
 	_loot_panel.size = Vector2(240, 74)
 
 	_overlay_panel.position = Vector2(left_x + (width - 360.0) * 0.5, top_y + 96.0)
 	_overlay_panel.size = Vector2(360, 220)
+
+	_announce_panel.position = Vector2(left_x + (width - 300.0) * 0.5, top_y + UITheme.TOP_BAR_HEIGHT + 12.0)
+	_announce_panel.size = Vector2(300, 52)
 
 	_augment_panel.position = Vector2(left_x + (width - 340.0) * 0.5, top_y + 88.0)
 	_augment_panel.size = Vector2(340, 180)
@@ -479,6 +546,7 @@ func update_synergies(board_units: Array) -> void:
 	for child in _trait_list.get_children():
 		child.queue_free()
 	_trait_entries.clear()
+	_active_trait_count = 0
 
 	var counts: Dictionary = {}
 	for unit in board_units:
@@ -519,6 +587,9 @@ func update_synergies(board_units: Array) -> void:
 		row.add_child(count_lbl)
 
 		row.mouse_entered.connect(_on_trait_hovered.bind(DataManager.get_trait_tooltip(trait_id)))
+		_active_trait_count += 1
+
+	_refresh_layout()
 
 
 func set_skip_button_visible(visible_state: bool) -> void:
@@ -530,7 +601,17 @@ func show_round_result(player_won: bool, reason: String = "") -> void:
 	_overlay_shade.visible = true
 	_overlay_panel.visible = true
 	_overlay_title.text = "Victory" if player_won else "Defeat"
-	_overlay_body.text = reason
+	var round_label: String = str(_round_context.get("label", _round_context.get("type", reason))).strip_edges()
+	var body_lines: Array[String] = []
+	if round_label != "":
+		body_lines.append(round_label)
+	if player_won:
+		body_lines.append("Your board won the fight.")
+		if GameManager.has_encounter("second_wind"):
+			body_lines.append("Second Wind restored health.")
+	else:
+		body_lines.append("Your tactician took damage.")
+	_overlay_body.text = "\n".join(body_lines)
 
 
 func hide_round_result() -> void:
@@ -541,12 +622,27 @@ func hide_round_result() -> void:
 func show_run_summary(summary: Dictionary) -> void:
 	_overlay_shade.visible = true
 	_overlay_panel.visible = true
-	_overlay_title.text = "Run Over"
-	_overlay_body.text = "Placement %s\nRound %s\nLevel %s\nGold %s" % [
+	var placement: int = int(summary.get("placement", 8))
+	_overlay_title.text = "Victory" if placement <= 1 else "Run Over"
+	var augment_count: int = int((summary.get("augments", []) as Array).size())
+	var inventory_count: int = int((summary.get("inventory", []) as Array).size())
+	var encounter_label: String = str(summary.get("encounter", "")).replace("_", " ").capitalize()
+	var reason: String = str(summary.get("reason", "")).replace("_", " ").capitalize()
+	_overlay_body.text = "Placement %s\nReason %s\nRound %s\nLevel %s\nHP %s\nGold %s\nEncounter %s\nRecord %d-%d\nGold Earned %d\nItems Earned %d\nSpecial Rounds %d\nAugments %d\nItems Held %d" % [
 		str(summary.get("placement", "-")),
+		reason if reason != "" else "-",
 		str(summary.get("round", "-")),
 		str(summary.get("level", "-")),
-		str(summary.get("gold", "-"))
+		str(summary.get("health", "-")),
+		str(summary.get("gold", "-")),
+		encounter_label if encounter_label != "" else "-",
+		int(summary.get("wins", 0)),
+		int(summary.get("losses", 0)),
+		int(summary.get("gold_earned", 0)),
+		int(summary.get("items_earned", 0)),
+		int(summary.get("special_rounds", 0)),
+		augment_count,
+		inventory_count
 	]
 
 
@@ -554,12 +650,47 @@ func hide_run_summary() -> void:
 	hide_round_result()
 
 
+func show_round_intro(round_data: Dictionary, opponent_profile: Dictionary) -> void:
+	if _announce_panel == null:
+		return
+	var label: String = str(round_data.get("label", "Next Round"))
+	var subtitle: String = ""
+	var round_type: String = str(round_data.get("type", ""))
+	if round_type == "npc" or round_type == "combat" or round_type == "creep":
+		var opp_name: String = str(opponent_profile.get("name", "Creep Wave"))
+		var opp_title: String = str(opponent_profile.get("title", ""))
+		var opp_quote: String = str(opponent_profile.get("quote", ""))
+		subtitle = opp_name if opp_title == "" else "%s - %s" % [opp_name, opp_title]
+		if opp_quote != "":
+			subtitle += " | %s" % opp_quote
+	elif round_type == "armory":
+		subtitle = "Choose one reward package"
+	elif round_type == "draft":
+		subtitle = "Pick one free recruit"
+	elif round_type == "loot":
+		subtitle = "Choose the best loot bundle"
+	_announce_title.text = label
+	_announce_body.text = subtitle
+	_announce_panel.visible = true
+	_announce_token += 1
+	var token: int = _announce_token
+	var timer: SceneTreeTimer = get_tree().create_timer(1.8)
+	timer.timeout.connect(func():
+		if token == _announce_token and _announce_panel != null:
+			_announce_panel.visible = false
+	)
+
+
 func _on_health_changed(hp: int) -> void:
 	_health_label.text = "♥ %d" % hp
 
 
 func _on_round_changed(round_num: int) -> void:
-	_round_label.text = "Round %d / 12" % round_num
+	var total_rounds: int = 15
+	var root = get_parent()
+	if root != null and root.has_method("get_total_rounds"):
+		total_rounds = int(root.call("get_total_rounds"))
+	_round_label.text = "Round %d / %d" % [round_num, total_rounds]
 
 
 func _on_gold_changed(_gold: int) -> void:
@@ -580,6 +711,7 @@ func _on_inventory_changed(items: Array[String]) -> void:
 			bg.color = Color(UITheme.BG_CARD.r, UITheme.BG_CARD.g, UITheme.BG_CARD.b, 0.55)
 	refresh_inventory_selection()
 	_refresh_overview()
+	_refresh_layout()
 
 
 func _bind_scene_peers() -> void:
@@ -618,6 +750,7 @@ func _on_phase_changed(phase: int) -> void:
 	if phase != PREP_PHASE:
 		_selected_item_index = -1
 		refresh_inventory_selection()
+	_refresh_help_text()
 
 
 func _refresh_phase_label() -> void:
@@ -629,11 +762,21 @@ func _refresh_phase_label() -> void:
 func _refresh_overview() -> void:
 	_on_health_changed(GameManager.player_health)
 	_on_round_changed(GameManager.current_round)
-	_inventory_label.text = "Items %d/%d" % [GameManager.get_item_inventory_size(), GameManager.MAX_INVENTORY_ITEMS]
-	_augment_label.text = "Augments %d" % GameManager.get_active_augments().size()
+	var item_count: int = GameManager.get_item_inventory_size()
+	var augment_count: int = GameManager.get_active_augments().size()
+	var encounter: Dictionary = GameManager.get_current_encounter()
+	_inventory_label.text = "Items %d/%d" % [item_count, GameManager.MAX_INVENTORY_ITEMS]
+	if not encounter.is_empty():
+		_augment_label.text = "%s%s" % [
+			str(encounter.get("name", "")),
+			" | Augments %d" % augment_count if augment_count > 0 else ""
+		]
+	else:
+		_augment_label.text = "Augments %d" % augment_count if augment_count > 0 else ""
 	_team_label.text = "%d/%d" % [_get_team_count(), _get_team_capacity()]
 	_bench_label.text = "%d/%d" % [_get_bench_count(), _get_bench_capacity()]
 	_refresh_opponent_panel()
+	_refresh_help_text()
 
 
 func _get_team_count() -> int:
@@ -660,8 +803,13 @@ func _on_augments_changed(_active_augments: Array[String]) -> void:
 	_refresh_overview()
 
 
+func _on_encounter_changed(_encounter_id: String) -> void:
+	_refresh_overview()
+
+
 func _on_augment_choice_offered(options: Array[String]) -> void:
 	_augment_panel.visible = true
+	_augment_title.text = "Choose an Augment"
 	for i in _augment_buttons.size():
 		var button := _augment_buttons[i]
 		if i < options.size():
@@ -669,7 +817,9 @@ func _on_augment_choice_offered(options: Array[String]) -> void:
 			var data: Dictionary = DataManager.get_augment(augment_id)
 			button.text = str(data.get("name", augment_id))
 			button.tooltip_text = str(data.get("description", ""))
+			button.set_meta("choice_kind", "augment")
 			button.set_meta("augment_id", augment_id)
+			button.set_meta("choice_id", augment_id)
 			button.visible = true
 		else:
 			button.visible = false
@@ -680,18 +830,22 @@ func _on_inventory_slot_pressed(index: int) -> void:
 	if index >= items.size():
 		_selected_item_index = -1
 		refresh_inventory_selection()
+		_refresh_help_text()
 		return
 	if _selected_item_index == -1:
 		_selected_item_index = index
 		refresh_inventory_selection()
+		_refresh_help_text()
 		return
 	if _selected_item_index == index:
 		_selected_item_index = -1
 		refresh_inventory_selection()
+		_refresh_help_text()
 		return
 	var crafted_item: String = GameManager.craft_inventory_items(_selected_item_index, index)
 	_selected_item_index = -1
 	refresh_inventory_selection()
+	_refresh_help_text()
 	if crafted_item != "":
 		show_inspect_text("Crafted %s" % crafted_item)
 	else:
@@ -702,10 +856,16 @@ func _on_augment_button_pressed(index: int) -> void:
 	if index < 0 or index >= _augment_buttons.size():
 		return
 	var button: Button = _augment_buttons[index]
-	if not button.has_meta("augment_id"):
+	if not button.has_meta("choice_kind") or not button.has_meta("choice_id"):
 		return
-	if GameManager.choose_augment(str(button.get_meta("augment_id"))):
-		_augment_panel.visible = false
+	var choice_kind: String = str(button.get_meta("choice_kind"))
+	var choice_id: String = str(button.get_meta("choice_id"))
+	if choice_kind == "augment":
+		if GameManager.choose_augment(choice_id):
+			_augment_panel.visible = false
+		return
+	_augment_panel.visible = false
+	selection_chosen.emit(choice_kind, choice_id)
 
 
 func _on_inventory_slot_hovered(index: int) -> void:
@@ -722,6 +882,7 @@ func _on_unit_targeted_for_item(unit) -> void:
 	if GameManager.equip_inventory_item_to_unit(_selected_item_index, unit):
 		_selected_item_index = -1
 		refresh_inventory_selection()
+		_refresh_help_text()
 		show_inspect_text("Equipped %s" % unit.unit_name)
 
 
@@ -734,7 +895,7 @@ func _show_unit_inspect(unit) -> void:
 
 func show_inspect_text(text: String) -> void:
 	_inspect_label.text = text
-	_inspect_panel.visible = text != ""
+	_inspect_panel.visible = text.strip_edges() != ""
 
 
 func hide_inspect() -> void:
@@ -773,6 +934,22 @@ func show_item_rewards(item_ids: Array[String]) -> void:
 	_loot_panel.visible = true
 
 
+func show_reward_choices(title: String, choices: Array[Dictionary]) -> void:
+	_augment_panel.visible = true
+	_augment_title.text = title
+	for i in _augment_buttons.size():
+		var button := _augment_buttons[i]
+		if i < choices.size():
+			var choice: Dictionary = choices[i]
+			button.text = str(choice.get("name", choice.get("id", "Choice")))
+			button.tooltip_text = str(choice.get("description", ""))
+			button.set_meta("choice_kind", str(choice.get("kind", "reward")))
+			button.set_meta("choice_id", str(choice.get("id", "")))
+			button.visible = true
+		else:
+			button.visible = false
+
+
 func _hide_loot_panel() -> void:
 	_loot_panel.visible = false
 
@@ -783,18 +960,25 @@ func _on_round_context_changed(round_data: Dictionary, opponent_profile: Diction
 	_round_lobby = lobby
 	_round_opponent_index = opponent_index
 	_refresh_opponent_panel()
+	_refresh_help_text()
+	if _phase == PREP_PHASE:
+		show_round_intro(round_data, opponent_profile)
 
 
 func _refresh_opponent_panel() -> void:
 	if _opponent_name == null:
 		return
 	var opp_name: String = str(_round_opponent.get("name", "Creep Wave"))
+	var opp_title: String = str(_round_opponent.get("title", ""))
 	var opp_kind: String = str(_round_context.get("label", _round_context.get("kind", "Opening PvE")))
-	_opponent_name.text = opp_name
+	_opponent_name.text = opp_name if opp_title == "" else "%s - %s" % [opp_name, opp_title]
 	_opponent_round.text = opp_kind
+	_opponent_hint.text = str(_round_opponent.get("threat", ""))
 	for child in _opponent_row.get_children():
 		child.queue_free()
-	var lobby: Array = _round_opponent.get("units", [])
+	var lobby: Array = _round_context.get("preview_units", [])
+	if lobby.is_empty():
+		lobby = _round_opponent.get("units", [])
 	if lobby.is_empty():
 		lobby = ["watchman", "bone_walker"]
 	for unit_id in lobby:
@@ -828,3 +1012,32 @@ func refresh_inventory_selection() -> void:
 	for i in _inventory_slot_bgs.size():
 		var bg: ColorRect = _inventory_slot_bgs[i]
 		bg.color = Color(UITheme.GOLD_BRIGHT.r, UITheme.GOLD_BRIGHT.g, UITheme.GOLD_BRIGHT.b, 0.65) if i == _selected_item_index else Color(UITheme.BG_CARD.r, UITheme.BG_CARD.g, UITheme.BG_CARD.b, 0.55)
+
+
+func _refresh_help_text() -> void:
+	var round_kind: String = str(_round_context.get("type", GameManager.get_round_kind()))
+	if _phase == COMBAT_PHASE:
+		_default_inspect_text = "Combat is live. Watch casts, target focus, and item procs."
+	elif _phase == RESULT_PHASE:
+		_default_inspect_text = "Round resolved. Claim rewards, augments, or continue the run."
+	elif _selected_item_index >= 0:
+		_default_inspect_text = "Tap another item to craft, or tap a unit to equip the selected item."
+	else:
+		match round_kind:
+			"draft":
+				_default_inspect_text = "Draft round. Choose one free recruit for your board."
+			"armory":
+				_default_inspect_text = "Armory round. Pick one reward package of items and gold."
+			"loot":
+				_default_inspect_text = "Loot round. Choose the bundle that best fits your comp."
+			"creep":
+				_default_inspect_text = "Prep: buy units, place them, and press Ready for the creep fight."
+			"npc", "combat":
+				_default_inspect_text = "Prep: position your team, merge upgrades, and equip items before combat."
+				var threat_hint: String = str(_round_opponent.get("reward_hint", ""))
+				if threat_hint != "":
+					_default_inspect_text += " " + threat_hint
+			_:
+				_default_inspect_text = "Build your board, manage gold, and prepare for the next fight."
+	if _bench_ui != null and _bench_ui.has_method("set_hint_text"):
+		_bench_ui.set_hint_text(_default_inspect_text)

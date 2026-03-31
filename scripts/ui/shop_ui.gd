@@ -89,27 +89,27 @@ func _build_ui() -> void:
 	var root := VBoxContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 4)
+	root.add_theme_constant_override("separation", 2)
 	margin.add_child(root)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
+	header.add_theme_constant_override("separation", 4)
 	root.add_child(header)
 
 	var gold_icon := TextureRect.new()
 	gold_icon.texture = preload("res://assets/ui/gold_icon.svg")
 	gold_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	gold_icon.stretch_mode = TextureRect.STRETCH_SCALE
-	gold_icon.custom_minimum_size = Vector2(18, 18)
+	gold_icon.custom_minimum_size = Vector2(16, 16)
 	header.add_child(gold_icon)
 
 	_gold_label = Label.new()
-	_gold_label.add_theme_font_size_override("font_size", 16)
+	_gold_label.add_theme_font_size_override("font_size", 14)
 	_gold_label.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
 	header.add_child(_gold_label)
 
 	_interest_label = Label.new()
-	_interest_label.add_theme_font_size_override("font_size", 10)
+	_interest_label.add_theme_font_size_override("font_size", 9)
 	_interest_label.add_theme_color_override("font_color", UITheme.GREEN_HP)
 	header.add_child(_interest_label)
 
@@ -118,14 +118,14 @@ func _build_ui() -> void:
 	header.add_child(spacer)
 
 	_level_label = Label.new()
-	_level_label.add_theme_font_size_override("font_size", 14)
+	_level_label.add_theme_font_size_override("font_size", 13)
 	_level_label.add_theme_color_override("font_color", UITheme.TEAL)
 	header.add_child(_level_label)
 
 	var content := HBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", 10)
 	root.add_child(content)
 
 	_cards_row = HBoxContainer.new()
@@ -146,7 +146,7 @@ func _build_ui() -> void:
 
 	_buttons_col = VBoxContainer.new()
 	_buttons_col.custom_minimum_size = Vector2(88, 0)
-	_buttons_col.add_theme_constant_override("separation", 4)
+	_buttons_col.add_theme_constant_override("separation", 3)
 	content.add_child(_buttons_col)
 
 	_reroll_btn = _make_button("Reroll\n2 Gold", UITheme.BG_PANEL_ALT, UITheme.TEAL)
@@ -177,25 +177,27 @@ func _make_unit_card():
 func _make_button(text: String, bg: Color = UITheme.BG_PANEL_ALT, border: Color = UITheme.BORDER_MID) -> Button:
 	var btn := Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(84, 22)
+	btn.custom_minimum_size = Vector2(72, 18)
 	btn.add_theme_stylebox_override("normal", UITheme.button_style(bg, border, 6))
 	btn.add_theme_stylebox_override("hover", UITheme.button_style(bg.lightened(0.12), border.lightened(0.2), 6))
-	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_font_size_override("font_size", 9)
 	btn.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
 	return btn
 
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = minf(maxf(760.0, view_size.x - UITheme.SCREEN_GUTTER * 2.0), UITheme.CONTENT_MAX_WIDTH)
-	position = Vector2(round((view_size.x - width) * 0.5), view_size.y - SHOP_HEIGHT - UITheme.SCREEN_GUTTER)
+	var width: float = UITheme.rail_width(view_size)
+	var left_x: float = UITheme.rail_left(view_size)
+	position = Vector2(left_x, view_size.y - SHOP_HEIGHT - UITheme.SCREEN_GUTTER)
 	size = Vector2(width, SHOP_HEIGHT)
 
-	var compact: bool = width < 1360.0
-	var large: bool = width >= 1600.0
-	var card_w: float = 100.0 if compact else (124.0 if large else 112.0)
-	var card_h: float = 104.0 if compact else (132.0 if large else 118.0)
-	_buttons_col.custom_minimum_size = Vector2(96.0 if compact else 112.0, 0.0)
+	var compact: bool = width < 920.0
+	var large: bool = width >= 1000.0
+	var card_w: float = 70.0 if compact else (82.0 if large else 76.0)
+	var card_h: float = 80.0 if compact else (92.0 if large else 86.0)
+	_buttons_col.custom_minimum_size = Vector2(70.0 if compact else 78.0, 0.0)
+	_cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	for card in _cards:
 		if card.has_method("set_card_metrics"):
 			card.set_card_metrics(card_w, card_h)
@@ -222,10 +224,18 @@ func _on_gold_changed(_new_gold: int) -> void:
 
 
 func _on_unit_purchased(unit_id: String) -> void:
+	var added: bool = false
 	if _bench_ui != null and _bench_ui.has_method("add_unit_from_shop"):
-		_bench_ui.add_unit_from_shop(unit_id)
+		added = bool(_bench_ui.add_unit_from_shop(unit_id))
+	if not added:
+		var cost: int = int(DataManager.get_unit(unit_id).get("cost", 1))
+		GameManager.add_gold(cost)
+		ShopManager.return_unit_to_pool(unit_id)
+		ShopManager.shop_units.append(unit_id)
+		_set_status("Bench full")
 	_apply_shop_units(ShopManager.shop_units)
-	unit_bought.emit(unit_id)
+	if added:
+		unit_bought.emit(unit_id)
 	_refresh_overview()
 	_update_affordability()
 

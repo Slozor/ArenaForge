@@ -7,15 +7,19 @@ var _start_button: Button = null
 var _settings_button: Button = null
 var _quit_button: Button = null
 var _panel: PanelContainer = null
+var _profile_label: Label = null
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UISettings.apply_audio(UISettings.load_settings())
 	_build_menu()
+	if ProfileManager != null and ProfileManager.has_signal("profile_changed"):
+		ProfileManager.profile_changed.connect(_refresh_profile_summary)
 	if not resized.is_connected(_refresh_layout):
 		resized.connect(_refresh_layout)
 	_refresh_layout()
+	_refresh_profile_summary()
 
 
 func _on_start_pressed() -> void:
@@ -84,6 +88,13 @@ func _build_menu() -> void:
 	hint.add_theme_color_override("font_color", Color(0.65, 0.7, 0.76))
 	box.add_child(hint)
 
+	_profile_label = Label.new()
+	_profile_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_profile_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_profile_label.add_theme_font_size_override("font_size", 11)
+	_profile_label.add_theme_color_override("font_color", Color(0.82, 0.84, 0.90))
+	box.add_child(_profile_label)
+
 	_start_button = _make_menu_button("Start Game")
 	_start_button.pressed.connect(_on_start_pressed)
 	box.add_child(_start_button)
@@ -120,3 +131,21 @@ func _refresh_layout() -> void:
 	var size_v: Vector2 = get_viewport_rect().size
 	if _panel != null:
 		_panel.custom_minimum_size = Vector2(clampf(size_v.x * 0.36, 320.0, 520.0), clampf(size_v.y * 0.54, 340.0, 520.0))
+
+
+func _refresh_profile_summary(_profile: Dictionary = {}) -> void:
+	if _profile_label == null:
+		return
+	var profile: Dictionary = ProfileManager.get_profile()
+	var last_summary: Dictionary = profile.get("last_summary", {})
+	var summary_text: String = "Runs %d | Wins %d | Best %d" % [
+		int(profile.get("total_runs", 0)),
+		int(profile.get("wins", 0)),
+		int(profile.get("best_placement", 8))
+	]
+	if not last_summary.is_empty():
+		summary_text += "\nLast run: Place %d on round %d" % [
+			int(last_summary.get("placement", 8)),
+			int(last_summary.get("round", 0))
+		]
+	_profile_label.text = summary_text

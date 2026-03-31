@@ -5,56 +5,80 @@
       "name": "Mira",
       "title": "Frontline Captain",
       "avatar": "npc_avatar",
-      "style": "frontline"
+      "style": "frontline",
+      "threat": "Heavy frontline and disciplined openers.",
+      "quote": "Hold the center. Let them crash into us.",
+      "reward_hint": "Expect sturdy tanks and long fights."
     },
     {
       "id": "sol",
       "name": "Sol",
       "title": "Sunlit Caster",
       "avatar": "npc_avatar",
-      "style": "burst"
+      "style": "burst",
+      "threat": "Fast spell bursts that punish weak backlines.",
+      "quote": "The fight is over the moment the light lands.",
+      "reward_hint": "Burst rounds reward stronger item timing."
     },
     {
       "id": "brakk",
       "name": "Brakk",
       "title": "Arena Brute",
       "avatar": "npc_avatar",
-      "style": "bruiser"
+      "style": "bruiser",
+      "threat": "Bruisers stack into the middle and overpower short boards.",
+      "quote": "No tricks. Just impact.",
+      "reward_hint": "Bring enough frontline to absorb the first swing."
     },
     {
       "id": "nyx",
       "name": "Nyx",
       "title": "Shadow Duelist",
       "avatar": "npc_avatar",
-      "style": "assassin"
+      "style": "assassin",
+      "threat": "Backline pressure and jump threats.",
+      "quote": "If your carry blinks, it is already too late.",
+      "reward_hint": "Protect your backline and watch flank spacing."
     },
     {
       "id": "vale",
       "name": "Vale",
       "title": "Arcane Planner",
       "avatar": "npc_avatar",
-      "style": "mage"
+      "style": "mage",
+      "threat": "Layered casting with backline control.",
+      "quote": "There is always a cleaner angle.",
+      "reward_hint": "Spread out to reduce spell splash."
     },
     {
       "id": "orin",
       "name": "Orin",
       "title": "Measured Tactician",
       "avatar": "npc_avatar",
-      "style": "control"
+      "style": "control",
+      "threat": "Measured pacing with shields and tempo denial.",
+      "quote": "Win slowly, and they will call it inevitable.",
+      "reward_hint": "Value mana and sustain in long control rounds."
     },
     {
       "id": "sable",
       "name": "Sable",
       "title": "Late-Game Greed",
       "avatar": "npc_avatar",
-      "style": "economy"
+      "style": "economy",
+      "threat": "Greedy scaling that spikes later in the run.",
+      "quote": "You can feel poor now. I will feel stronger later.",
+      "reward_hint": "Punish greed before the board caps out."
     },
     {
       "id": "kest",
       "name": "Kest",
       "title": "Adaptive Skirmisher",
       "avatar": "npc_avatar",
-      "style": "tempo"
+      "style": "tempo",
+      "threat": "Flexible tempo boards with fast repositioning.",
+      "quote": "Keep moving. Static boards die first.",
+      "reward_hint": "Tempo rounds favor quick upgrades and positioning."
     }
   ]
 }

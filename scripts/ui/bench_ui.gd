@@ -111,13 +111,13 @@ func _build_ui() -> void:
 	_hint_label = Label.new()
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hint_label.add_theme_font_size_override("font_size", 9)
+	_hint_label.add_theme_font_size_override("font_size", 8)
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	_header_row.add_child(_hint_label)
 
 	_slots_row = HBoxContainer.new()
 	_slots_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_slots_row.add_theme_constant_override("separation", 6)
+	_slots_row.add_theme_constant_override("separation", 5)
 	vbox.add_child(_slots_row)
 
 	for i in BENCH_SLOTS:
@@ -183,20 +183,21 @@ func _make_slot(index: int) -> Control:
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = minf(maxf(760.0, view_size.x - UITheme.SCREEN_GUTTER * 2.0), UITheme.CONTENT_MAX_WIDTH)
+	var width: float = UITheme.rail_width(view_size)
+	var left_x: float = UITheme.rail_left(view_size)
 	var bench_h: float = UITheme.BENCH_PANEL_HEIGHT
 	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
-	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP
-	position = Vector2(round((view_size.x - width) * 0.5), bench_y)
+	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP + 2.0
+	position = Vector2(left_x, bench_y)
 	size = Vector2(width, bench_h)
 
-	var compact: bool = width < 1360.0
-	var large: bool = width >= 1600.0
-	var available_w: float = width - 32.0
-	var slot_size: float = clampf((available_w - float(BENCH_SLOTS - 1) * 6.0) / float(BENCH_SLOTS), 22.0, 44.0 if large else 36.0)
+	var compact: bool = width < 920.0
+	var large: bool = width >= 1000.0
+	var available_w: float = width - 24.0
+	var slot_size: float = clampf((available_w - float(BENCH_SLOTS - 1) * 5.0) / float(BENCH_SLOTS), 26.0, 56.0 if large else 46.0)
 	if compact:
-		slot_size = minf(slot_size, 30.0)
-	_slots_row.add_theme_constant_override("separation", clampi(int(round(slot_size * 0.18)), 4, 8))
+		slot_size = minf(slot_size, 38.0)
+	_slots_row.add_theme_constant_override("separation", clampi(int(round(slot_size * 0.14)), 4, 7))
 
 	for slot in _slots:
 		slot.custom_minimum_size = Vector2(slot_size, slot_size)
@@ -207,6 +208,11 @@ func _refresh_layout() -> void:
 			portrait.offset_top = inset
 			portrait.offset_right = -inset
 			portrait.offset_bottom = -inset
+
+
+func set_hint_text(text: String) -> void:
+	if _hint_label != null:
+		_hint_label.text = text
 
 
 func add_unit(unit) -> bool:
@@ -223,8 +229,8 @@ func add_unit(unit) -> bool:
 		_check_merge(unit)
 		_refresh_overview()
 		return true
-	if unit.star_level == 1 and _can_merge_unit(unit.unit_id):
-		_apply_direct_merge(unit.unit_id)
+	if _can_merge_incoming_unit(unit):
+		_apply_direct_merge(unit)
 		_refresh_overview()
 		return true
 	return false
@@ -239,17 +245,20 @@ func add_unit_from_shop(unit_id: String) -> bool:
 		return false
 	var unit = unit_script.new()
 	unit.init(data)
-	return add_unit(unit)
+	var added: bool = add_unit(unit)
+	if not added and is_instance_valid(unit):
+		unit.queue_free()
+	return added
 
 
 func can_accept_purchase(unit_id: String) -> bool:
 	if _find_free_slot() != -1:
 		return true
-	return _can_merge_unit(unit_id)
+	return _can_merge_incoming_unit_id(unit_id)
 
 
 func can_accept_unit(unit) -> bool:
-	return _find_free_slot() != -1 or _can_merge_unit(unit.unit_id)
+	return _find_free_slot() != -1 or _can_merge_incoming_unit(unit)
 
 
 func remove_unit_at(slot: int):
@@ -347,10 +356,16 @@ func _check_merge(new_unit) -> void:
 	_try_merge_chain_for_unit(new_unit)
 
 
-func _apply_direct_merge(unit_id: String) -> void:
-	var candidates: Array = _get_merge_candidates(unit_id, 1)
-	if candidates.size() >= 3:
-		_merge_candidates(candidates.slice(0, 3))
+func _apply_direct_merge(incoming_unit) -> void:
+	if incoming_unit == null:
+		return
+	var requirement: int = GameManager.get_merge_requirement(incoming_unit.star_level)
+	var candidates: Array = _get_merge_candidates(incoming_unit.unit_id, incoming_unit.star_level)
+	if candidates.size() < maxi(0, requirement - 1):
+		return
+	var merge_group: Array = candidates.slice(0, requirement - 1)
+	merge_group.append(incoming_unit)
+	_merge_candidates(merge_group)
 
 
 func _show_upgrade_flash(slot_idx: int) -> void:
@@ -435,6 +450,23 @@ func _can_merge_unit(unit_id: String) -> bool:
 	return _get_merge_candidates(unit_id, 1).size() >= 3 or _get_merge_candidates(unit_id, 2).size() >= 3
 
 
+func _can_merge_incoming_unit_id(unit_id: String) -> bool:
+	return _can_merge_incoming_at_star(unit_id, 1)
+
+
+func _can_merge_incoming_unit(unit) -> bool:
+	if unit == null:
+		return false
+	return _can_merge_incoming_at_star(unit.unit_id, unit.star_level)
+
+
+func _can_merge_incoming_at_star(unit_id: String, star_level: int) -> bool:
+	var requirement: int = GameManager.get_merge_requirement(star_level)
+	if requirement <= 0:
+		return false
+	return _get_merge_candidates(unit_id, star_level).size() >= requirement - 1
+
+
 func _try_merge_chain_for_unit(unit) -> void:
 	var candidates: Array = _get_merge_candidates(unit.unit_id, unit.star_level)
 	if candidates.size() >= 3:
@@ -462,6 +494,8 @@ func _merge_candidates(candidates: Array):
 	if keeper_slot != -1:
 		_refresh_slot(keeper_slot)
 		_show_upgrade_flash(keeper_slot)
+	elif _board_ui != null:
+		_board_ui.queue_redraw()
 	_refresh_overview()
 	return keeper
 
@@ -525,6 +559,6 @@ func _refresh_overview() -> void:
 	if _count_label != null:
 		_count_label.text = "%d/%d" % [get_unit_count(), BENCH_SLOTS]
 	if _hint_label != null:
-		_hint_label.text = "Tap a bench unit, then place it." if _interaction_enabled else ""
+		_hint_label.text = "Tap a unit to place." if _interaction_enabled else ""
 	for i in _slots.size():
 		_refresh_slot(i)

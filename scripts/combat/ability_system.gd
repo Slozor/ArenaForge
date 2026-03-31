@@ -10,7 +10,7 @@ static func resolve_ability(caster, ability: Dictionary, allies: Array, enemies:
 		return
 
 	var effect: String = str(ability.get("effect", "splash_damage"))
-	var power: float = float(ability.get("power", 100.0))
+	var power: float = _apply_item_power_bonuses(caster, allies, float(ability.get("power", 100.0)))
 	var radius: int = int(ability.get("radius", 0))
 
 	match effect:
@@ -34,6 +34,8 @@ static func resolve_ability(caster, ability: Dictionary, allies: Array, enemies:
 			_drain_damage(caster, enemies, power)
 		_:
 			_splash_damage(caster, enemies, power, radius, str(ability.get("target", "weakest_enemy")))
+
+	_apply_post_cast_item_effects(caster)
 
 
 static func _splash_damage(caster, enemies: Array, power: float, radius: int, target_mode: String) -> void:
@@ -194,3 +196,34 @@ static func _pick_ally_target(caster, allies: Array, mode: String):
 
 static func _distance(a: Vector2i, b: Vector2i) -> int:
 	return maxi(abs(a.x - b.x), abs(a.y - b.y))
+
+
+static func _apply_item_power_bonuses(caster, allies: Array, base_power: float) -> float:
+	var multiplier: float = 1.0
+	for item_id in caster.get_equipped_items():
+		match item_id:
+			"rage_crown":
+				var alive_allies: int = 0
+				for ally in allies:
+					if ally == caster:
+						continue
+					if int(ally.state) != DEAD_STATE:
+						alive_allies += 1
+				multiplier += minf(0.60, float(alive_allies) * 0.15)
+			"archmage_foci":
+				multiplier += 0.18
+	return base_power * multiplier
+
+
+static func _apply_post_cast_item_effects(caster) -> void:
+	for item_id in caster.get_equipped_items():
+		match item_id:
+			"gale_serum":
+				caster.temp_attack_speed_mod += 0.45
+				var reset_timer: SceneTreeTimer = caster.get_tree().create_timer(4.0)
+				reset_timer.timeout.connect(func():
+					if is_instance_valid(caster) and int(caster.state) != DEAD_STATE:
+						caster.temp_attack_speed_mod -= 0.45
+				)
+			"elder_core":
+				caster.heal(maxi(1, int(round(float(caster.get_max_health()) * 0.12))))

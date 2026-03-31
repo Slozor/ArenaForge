@@ -36,6 +36,8 @@ var _occupied: Dictionary = {}
 var _burn_targets: Dictionary = {}
 # Attack speed slow: unit id -> { timer, original_speed }
 var _slow_targets: Dictionary = {}
+# Attack speed haste: unit id -> { timer, original_temp_mod }
+var _haste_targets: Dictionary = {}
 
 signal unit_attacked(attacker, target, damage: int)
 signal unit_moved(unit, to: Vector2i)
@@ -56,9 +58,11 @@ func start(p_units: Array, e_units: Array) -> void:
 	_occupied.clear()
 	_burn_targets.clear()
 	_slow_targets.clear()
+	_haste_targets.clear()
 
 	for unit in player_units + enemy_units:
 		unit.reset_combat_state()
+		_apply_combat_start_item_effects(unit)
 		_register_position(unit)
 
 	# Initialize per-unit state
@@ -115,10 +119,12 @@ func _process(delta: float) -> void:
 		if int(unit.state) == DEAD_STATE and unit.passive != "death_curse":
 			continue
 		PassiveHandler.on_tick(unit, us.get("passive", {}), delta, allies, enemies)
+		_unit_state[unit.get_instance_id()] = us
 
 	# --- Timed effects ---
 	_tick_burn(delta)
 	_tick_slow_effects(delta)
+	_tick_haste_effects(delta)
 	_tick_casts(delta)
 
 	# --- Movement tick ---
@@ -174,6 +180,7 @@ func _tick_attacks(delta: float) -> void:
 		if us["atk_timer"] <= 0.0:
 			us["atk_timer"] = 1.0 / maxf(unit.get_attack_speed(), 0.1)
 			_try_attack(unit, us)
+		_unit_state[unit.get_instance_id()] = us
 
 
 func _try_attack(unit, us: Dictionary) -> void:
@@ -184,7 +191,8 @@ func _try_attack(unit, us: Dictionary) -> void:
 		return
 
 	var base_dmg: int = unit.get_attack_damage()
-	var final_dmg: int = PassiveHandler.on_pre_attack(unit, target, base_dmg, us.get("passive", {}))
+	var modified_dmg: int = _apply_attack_item_bonuses(unit, base_dmg)
+	var final_dmg: int = PassiveHandler.on_pre_attack(unit, target, modified_dmg, us.get("passive", {}))
 
 	# Dragon race burn: dealt as flat damage before armor (applied by CombatController)
 	var burn_active: bool = _has_dragon_burn_synergy(unit)
@@ -202,9 +210,11 @@ func _try_attack(unit, us: Dictionary) -> void:
 	unit_attacked.emit(unit, target, final_dmg)
 
 	PassiveHandler.on_hit(unit, target, final_dmg, us.get("passive", {}), _get_enemies_of(unit))
+	_unit_state[unit.get_instance_id()] = us
 
 	if int(target.state) == DEAD_STATE:
 		PassiveHandler.on_kill(unit, target, us.get("passive", {}))
+		_unit_state[unit.get_instance_id()] = us
 
 
 # ── Special combat-start effects ────────────────────────────────────────────
@@ -275,6 +285,7 @@ func _on_unit_died(unit) -> void:
 	unit.finish_cast()
 	var nearby: Array = _get_units_within_range(unit, 1, _get_enemies_of(unit))
 	PassiveHandler.on_death(unit, us.get("passive", {}), nearby)
+	_unit_state[unit.get_instance_id()] = us
 
 	_occupied.erase(unit.board_position)
 	unit_died.emit(unit, is_player)
@@ -296,6 +307,7 @@ func _revive_unit(unit) -> void:
 	_register_position(unit)
 	_burn_targets.erase(unit.get_instance_id())
 	_slow_targets.erase(unit.get_instance_id())
+	_haste_targets.erase(unit.get_instance_id())
 	unit.health_changed.emit(unit.current_health, unit.get_max_health())
 
 
@@ -325,10 +337,10 @@ func _has_undead_revive_synergy(unit) -> bool:
 
 # ── Burn DoT (Dragon race) ───────────────────────────────────────────────────
 
-func _apply_burn(target) -> void:
+func _apply_burn(target, duration: float = 3.0, dps: int = 10) -> void:
 	_burn_targets[target.get_instance_id()] = {
-		"timer": 3.0,
-		"dps": 10,
+		"timer": duration,
+		"dps": dps,
 		"accumulator": 0.0
 	}
 	target.set_burn_visual(1.0)
@@ -363,12 +375,67 @@ func _apply_item_proc_on_hit(attacker, defender, damage_dealt: int) -> void:
 			"frozen_heart":
 				if int(defender.state) != DEAD_STATE:
 					_apply_attack_speed_slow(defender, 2.0, 0.25)
+			"blazing_edge":
+				if int(defender.state) != DEAD_STATE:
+					_apply_burn(defender, 4.0, 14)
+			"phantom_quiver":
+				_apply_phantom_quiver(attacker, defender, damage_dealt)
+			"storm_lance":
+				_apply_storm_lance(attacker, defender, damage_dealt)
 
 	for item_id in defender.get_equipped_items():
 		match item_id:
 			"thornmail":
 				var reflected: int = maxi(1, int(float(damage_dealt) * 0.20))
 				attacker.take_damage(reflected, true)
+			"bastion_mail":
+				var heavy_reflect: int = maxi(1, int(float(damage_dealt) * 0.30))
+				attacker.take_damage(heavy_reflect, true)
+			"sunforged_plate":
+				if int(attacker.state) != DEAD_STATE:
+					_apply_burn(attacker, 3.0, 10)
+
+
+func _apply_attack_item_bonuses(attacker, base_damage: int) -> int:
+	var multiplier: float = 1.0
+	for item_id in attacker.get_equipped_items():
+		match item_id:
+			"rage_crown":
+				var alive_allies: int = _count_alive_allies(attacker)
+				multiplier += minf(0.60, float(alive_allies) * 0.15)
+	return maxi(1, int(round(float(base_damage) * multiplier)))
+
+
+func _count_alive_allies(unit) -> int:
+	var count: int = 0
+	for ally in _get_allies_of(unit):
+		if ally == unit:
+			continue
+		if int(ally.state) != DEAD_STATE:
+			count += 1
+	return count
+
+
+func _apply_phantom_quiver(attacker, primary_target, damage_dealt: int) -> void:
+	var bounce_target = null
+	var bounce_dist: int = 999
+	for enemy in _get_enemies_of(attacker):
+		if enemy == primary_target or int(enemy.state) == DEAD_STATE:
+			continue
+		var dist: int = maxi(abs(enemy.board_position.x - primary_target.board_position.x), abs(enemy.board_position.y - primary_target.board_position.y))
+		if dist < bounce_dist:
+			bounce_dist = dist
+			bounce_target = enemy
+	if bounce_target != null:
+		bounce_target.take_damage(maxi(1, int(round(float(damage_dealt) * 0.40))), true)
+
+
+func _apply_storm_lance(attacker, primary_target, damage_dealt: int) -> void:
+	for enemy in _get_enemies_of(attacker):
+		if enemy == primary_target or int(enemy.state) == DEAD_STATE:
+			continue
+		if enemy.board_position.y == primary_target.board_position.y:
+			enemy.take_damage(maxi(1, int(round(float(damage_dealt) * 0.35))), true)
 
 
 func _apply_attack_speed_slow(target, duration: float, slow_percent: float) -> void:
@@ -387,6 +454,21 @@ func _apply_attack_speed_slow(target, duration: float, slow_percent: float) -> v
 	}
 
 
+func _apply_attack_speed_haste(target, duration: float, haste_flat: float) -> void:
+	var id: int = target.get_instance_id()
+	if _haste_targets.has(id):
+		target.temp_attack_speed_mod = float(_haste_targets[id].get("original_temp_mod", target.temp_attack_speed_mod)) + haste_flat
+		_haste_targets[id]["timer"] = duration
+		return
+	var original_temp_mod: float = target.temp_attack_speed_mod
+	target.temp_attack_speed_mod = original_temp_mod + haste_flat
+	_haste_targets[id] = {
+		"timer": duration,
+		"original_temp_mod": original_temp_mod
+	}
+	target.play_attack_pulse()
+
+
 func _tick_slow_effects(delta: float) -> void:
 	var expired: Array = []
 	for id in _slow_targets.keys():
@@ -402,6 +484,23 @@ func _tick_slow_effects(delta: float) -> void:
 			_slow_targets[id] = entry
 	for id in expired:
 		_slow_targets.erase(id)
+
+
+func _tick_haste_effects(delta: float) -> void:
+	var expired: Array = []
+	for id in _haste_targets.keys():
+		var entry: Dictionary = _haste_targets[id]
+		entry["timer"] -= delta
+		if entry["timer"] <= 0.0:
+			for unit in player_units + enemy_units:
+				if unit.get_instance_id() == id and int(unit.state) != DEAD_STATE:
+					unit.temp_attack_speed_mod = float(entry.get("original_temp_mod", 0.0))
+					break
+			expired.append(id)
+		else:
+			_haste_targets[id] = entry
+	for id in expired:
+		_haste_targets.erase(id)
 
 
 # ── Sudden death ─────────────────────────────────────────────────────────────
@@ -479,6 +578,13 @@ func _gain_mana(unit, amount: int) -> void:
 		return
 	if unit.gain_mana(amount):
 		_begin_cast(unit)
+
+
+func _apply_combat_start_item_effects(unit) -> void:
+	for item_id in unit.get_equipped_items():
+		match item_id:
+			"heartward_talisman":
+				unit.heal(maxi(1, int(round(float(unit.get_max_health()) * 0.12))))
 
 
 func _begin_cast(unit) -> void:

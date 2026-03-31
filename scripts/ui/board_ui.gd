@@ -238,6 +238,27 @@ func get_all_placed_units() -> Array:
 	return result
 
 
+func place_unit_from_external(unit, to_cell: Vector2i) -> bool:
+	if unit == null:
+		return false
+	if not _is_valid_cell(to_cell.x, to_cell.y):
+		return false
+	if grid[to_cell.x][to_cell.y] != null:
+		return false
+	if get_unit_count() >= team_capacity:
+		return false
+	if unit.get_parent() != self:
+		add_child(unit)
+	grid[to_cell.x][to_cell.y] = unit
+	unit.board_position = to_cell
+	unit.is_on_bench = false
+	unit.visible = true
+	unit.position = _cell_to_world(to_cell.x, to_cell.y)
+	unit_placed.emit(unit, to_cell.x, to_cell.y)
+	queue_redraw()
+	return true
+
+
 func _update_hovered_unit(pointer_pos: Vector2) -> void:
 	_hovered_unit = _find_unit_at_position(pointer_pos)
 	_update_tooltip(pointer_pos)
@@ -461,10 +482,10 @@ func _bind_scene_peers() -> void:
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var content_w: float = minf(maxf(640.0, view_size.x - UITheme.SCREEN_GUTTER * 2.0), UITheme.CONTENT_MAX_WIDTH)
-	var content_x: float = round((view_size.x - content_w) * 0.5)
-	var side_pad: float = clampf(content_w * 0.010, 8.0, 18.0)
-	var side_column: float = clampf(content_w * 0.11, 72.0, 132.0)
+	var content_w: float = UITheme.content_width(view_size)
+	var content_x: float = UITheme.content_left(view_size)
+	var side_pad: float = clampf(content_w * 0.008, 6.0, 14.0)
+	var side_column: float = clampf(content_w * 0.06, 40.0, 72.0)
 	var top_margin: float = UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
 	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
 	var bench_y: float = shop_y - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP

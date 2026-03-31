@@ -6,10 +6,6 @@ class_name Economy
 const INTEREST_THRESHOLDS: Array = [10, 20, 30, 40, 50]
 const MAX_INTEREST: int = 5
 const BASE_GOLD_PER_ROUND: int = 5
-const WIN_STREAK_BONUS: int = 1
-const LOSS_STREAK_BONUS: int = 1
-
-
 static func calculate_round_gold(
 	current_gold: int,
 	win_streak: int,
@@ -46,10 +42,13 @@ static func _calculate_interest(gold: int) -> int:
 
 
 static func _calculate_streak_bonus(win_streak: int, loss_streak: int) -> int:
-	if win_streak >= 3:
-		return WIN_STREAK_BONUS
-	if loss_streak >= 3:
-		return LOSS_STREAK_BONUS
+	var active_streak: int = maxi(win_streak, loss_streak)
+	if active_streak >= 6:
+		return 3
+	if active_streak >= 4:
+		return 2
+	if active_streak >= 2:
+		return 1
 	return 0
 
 

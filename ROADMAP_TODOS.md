@@ -81,3 +81,26 @@ Status:
 - Prefer free and license-safe assets, CC0 first.
 - Optimize for PC and mobile from the same codebase.
 - Do not revert unrelated edits from other agents.
+
+## Phase 5 - TFT-like Singleplayer Finish
+
+Research basis:
+- TFT relies on run-shaping systems beyond core combat, especially Augments, Carousel/Armory-style reward rounds, and set mechanics such as Opening Encounters/Hacks.
+- For ArenaForge without PvP, the closest equivalent is a polished singleplayer run with clear encounter modifiers, richer reward rounds, stronger NPC identity, better inspect/tutorial surfaces, and more content/balance depth.
+
+Tasks:
+- [x] Add Opening Encounters that change the whole run.
+- [x] Add richer Armory/Draft reward rounds with clearer choices and stronger rewards.
+- [x] Give NPC opponents clearer identities through formations and themed boards.
+- [x] Expand crafted item identity so late items are not just bigger stat sticks.
+- [x] Add tutorial/help surfaces for the main loop: buy, place, merge, equip, cast.
+- [x] Add more complete run polish: audio hooks, stronger round transitions, cleaner end-of-run summary.
+- [~] Run repeated full-run QA and rebalance economy, rewards, and late rounds.
+
+Current sequence:
+1. Opening Encounters
+2. Armory/Draft improvement
+3. NPC identity and formations
+4. Item identity
+5. Tutorial/help
+6. QA and rebalance

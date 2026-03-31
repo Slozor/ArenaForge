@@ -7,6 +7,8 @@ var _volume_slider: HSlider = null
 var _touch_toggle: CheckButton = null
 var _presentation_option: OptionButton = null
 var _panel: PanelContainer = null
+var _profile_summary: Label = null
+var _history_list: VBoxContainer = null
 
 
 func _ready() -> void:
@@ -14,6 +16,7 @@ func _ready() -> void:
 	_settings = UISettings.load_settings()
 	_build_ui()
 	_apply_settings_to_controls()
+	_refresh_profile_section()
 	UISettings.apply_audio(_settings)
 	if not resized.is_connected(_refresh_layout):
 		resized.connect(_refresh_layout)
@@ -80,6 +83,32 @@ func _build_ui() -> void:
 	note.add_theme_font_size_override("font_size", 12)
 	note.add_theme_color_override("font_color", Color(0.7, 0.74, 0.8))
 	box.add_child(note)
+
+	var profile_title := Label.new()
+	profile_title.text = "Run History"
+	profile_title.add_theme_font_size_override("font_size", 20)
+	box.add_child(profile_title)
+
+	_profile_summary = Label.new()
+	_profile_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_profile_summary.add_theme_font_size_override("font_size", 12)
+	_profile_summary.add_theme_color_override("font_color", Color(0.82, 0.84, 0.90))
+	box.add_child(_profile_summary)
+
+	var history_panel := PanelContainer.new()
+	history_panel.custom_minimum_size = Vector2(0, 120)
+	box.add_child(history_panel)
+
+	var history_margin := MarginContainer.new()
+	history_margin.add_theme_constant_override("margin_left", 10)
+	history_margin.add_theme_constant_override("margin_right", 10)
+	history_margin.add_theme_constant_override("margin_top", 10)
+	history_margin.add_theme_constant_override("margin_bottom", 10)
+	history_panel.add_child(history_margin)
+
+	_history_list = VBoxContainer.new()
+	_history_list.add_theme_constant_override("separation", 4)
+	history_margin.add_child(_history_list)
 
 	var button_row := HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 10)
@@ -162,4 +191,37 @@ func _on_back_pressed() -> void:
 func _refresh_layout() -> void:
 	var size_v: Vector2 = get_viewport_rect().size
 	if _panel != null:
-		_panel.custom_minimum_size = Vector2(clampf(size_v.x * 0.42, 340.0, 620.0), clampf(size_v.y * 0.62, 380.0, 620.0))
+		_panel.custom_minimum_size = Vector2(clampf(size_v.x * 0.42, 360.0, 680.0), clampf(size_v.y * 0.72, 460.0, 760.0))
+
+
+func _refresh_profile_section() -> void:
+	if _profile_summary == null or _history_list == null:
+		return
+	var profile: Dictionary = ProfileManager.get_profile()
+	_profile_summary.text = "Runs %d | Wins %d | Best placement %d" % [
+		int(profile.get("total_runs", 0)),
+		int(profile.get("wins", 0)),
+		int(profile.get("best_placement", 8))
+	]
+	for child in _history_list.get_children():
+		child.queue_free()
+	var history: Array = ProfileManager.get_run_history()
+	if history.is_empty():
+		var empty := Label.new()
+		empty.text = "No finished runs yet."
+		empty.add_theme_font_size_override("font_size", 11)
+		empty.add_theme_color_override("font_color", Color(0.7, 0.74, 0.8))
+		_history_list.add_child(empty)
+		return
+	for i in mini(5, history.size()):
+		var run: Dictionary = history[i]
+		var row := Label.new()
+		row.text = "#%d  Place %d  Round %d  %s" % [
+			i + 1,
+			int(run.get("placement", 8)),
+			int(run.get("round", 0)),
+			str(run.get("encounter", "")).replace("_", " ").capitalize()
+		]
+		row.add_theme_font_size_override("font_size", 11)
+		row.add_theme_color_override("font_color", Color(0.82, 0.84, 0.90))
+		_history_list.add_child(row)
