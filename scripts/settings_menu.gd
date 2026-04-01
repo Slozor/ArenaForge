@@ -1,6 +1,7 @@
 extends Control
 
 const MAIN_MENU_SCENE: String = "res://scenes/main_menu.tscn"
+const RELEASE_LABEL: String = "Prototype v0.1 - Web Demo"
 
 var _settings: Dictionary = {}
 var _volume_slider: HSlider = null
@@ -9,6 +10,8 @@ var _presentation_option: OptionButton = null
 var _panel: PanelContainer = null
 var _profile_summary: Label = null
 var _history_list: VBoxContainer = null
+var _how_to_play_label: Label = null
+var _credits_label: Label = null
 
 
 func _ready() -> void:
@@ -61,6 +64,12 @@ func _build_ui() -> void:
 	subtitle.add_theme_color_override("font_color", Color(0.75, 0.8, 0.88))
 	box.add_child(subtitle)
 
+	var release_label := Label.new()
+	release_label.text = RELEASE_LABEL
+	release_label.add_theme_font_size_override("font_size", 11)
+	release_label.add_theme_color_override("font_color", Color(0.86, 0.74, 0.34))
+	box.add_child(release_label)
+
 	var volume_row := _build_slider("Master Volume", -30.0, 0.0, 0.5)
 	_volume_slider.value_changed.connect(_on_volume_changed)
 	box.add_child(volume_row)
@@ -83,6 +92,18 @@ func _build_ui() -> void:
 	note.add_theme_font_size_override("font_size", 12)
 	note.add_theme_color_override("font_color", Color(0.7, 0.74, 0.8))
 	box.add_child(note)
+
+	var how_to_title := Label.new()
+	how_to_title.text = "How To Play"
+	how_to_title.add_theme_font_size_override("font_size", 20)
+	box.add_child(how_to_title)
+
+	_how_to_play_label = Label.new()
+	_how_to_play_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_how_to_play_label.add_theme_font_size_override("font_size", 12)
+	_how_to_play_label.add_theme_color_override("font_color", Color(0.82, 0.84, 0.90))
+	_how_to_play_label.text = "Buy units from the shop, place them on the board, and press Ready. Three copies of the same unit merge into a stronger star level. Build traits, equip items, and survive the full run through creep, draft, armory, elite, and boss rounds."
+	box.add_child(_how_to_play_label)
 
 	var profile_title := Label.new()
 	profile_title.text = "Run History"
@@ -109,6 +130,18 @@ func _build_ui() -> void:
 	_history_list = VBoxContainer.new()
 	_history_list.add_theme_constant_override("separation", 4)
 	history_margin.add_child(_history_list)
+
+	var credits_title := Label.new()
+	credits_title.text = "Credits & Licenses"
+	credits_title.add_theme_font_size_override("font_size", 20)
+	box.add_child(credits_title)
+
+	_credits_label = Label.new()
+	_credits_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_credits_label.add_theme_font_size_override("font_size", 11)
+	_credits_label.add_theme_color_override("font_color", Color(0.72, 0.76, 0.82))
+	_credits_label.text = "Game by ArenaForge prototype team. Engine: Godot 4. Art includes Kenney Tiny Dungeon and Kenney Pixel UI assets under CC0. Additional UI and gameplay code/assets created for this project."
+	box.add_child(_credits_label)
 
 	var button_row := HBoxContainer.new()
 	button_row.add_theme_constant_override("separation", 10)

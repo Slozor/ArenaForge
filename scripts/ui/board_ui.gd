@@ -19,6 +19,8 @@ const ARENA_TORCH: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/t
 
 const COLS: int = 7
 const ROWS: int = 4
+const PLAYER_PREP_MIN_ROW: int = 2
+const PLAYER_PREP_MAX_ROW: int = 3
 const CELL_SIZE: float = 96.0
 const BOARD_OFFSET: Vector2 = Vector2(304.0, 55.0)  # centered in 1280x720, below HUD (50px)
 const PREP_PHASE: int = 0
@@ -43,6 +45,7 @@ var _play_rect: Rect2 = Rect2()
 var _hovered_unit = null
 var _tooltip_panel: PanelContainer = null
 var _tooltip_label: Label = null
+var _arena_style: String = "frontline"
 
 # Grid: [col][row] -> Unit or null
 var grid: Array = []
@@ -169,6 +172,8 @@ func _set_selected(unit, from_cell: Vector2i, from_bench: bool) -> void:
 
 
 func _place_selected_unit(to_cell: Vector2i) -> void:
+	if not _is_valid_player_prep_cell(to_cell.x, to_cell.y):
+		return
 	if selected_from_bench and get_unit_count() >= team_capacity:
 		return
 
@@ -241,7 +246,7 @@ func get_all_placed_units() -> Array:
 func place_unit_from_external(unit, to_cell: Vector2i) -> bool:
 	if unit == null:
 		return false
-	if not _is_valid_cell(to_cell.x, to_cell.y):
+	if not _is_valid_player_prep_cell(to_cell.x, to_cell.y):
 		return false
 	if grid[to_cell.x][to_cell.y] != null:
 		return false
@@ -357,6 +362,10 @@ func _is_valid_cell(col: int, row: int) -> bool:
 	return col >= 0 and col < COLS and row >= 0 and row < ROWS
 
 
+func _is_valid_player_prep_cell(col: int, row: int) -> bool:
+	return _is_valid_cell(col, row) and row >= PLAYER_PREP_MIN_ROW and row <= PLAYER_PREP_MAX_ROW
+
+
 func _draw_board() -> void:
 	queue_redraw()
 
@@ -364,13 +373,13 @@ func _draw_board() -> void:
 func _draw() -> void:
 	var board_rect := Rect2(_board_offset - Vector2(22, 22), Vector2(COLS * _cell_size + 44, ROWS * _cell_size + 44))
 	var arena_rect := _play_rect
-	_draw_tiled_texture(ARENA_OUTER_TILE, arena_rect, 48.0)
-	draw_rect(arena_rect, Color(0.92, 0.74, 0.28, 0.22), false, 2.0)
+	_draw_tiled_texture(ARENA_OUTER_TILE, arena_rect, 48.0, _theme_outer_tint())
+	draw_rect(arena_rect, _theme_frame_color(), false, 2.0)
 	var inner_outer_rect: Rect2 = Rect2(arena_rect.position + Vector2(18, 18), arena_rect.size - Vector2(36, 36))
-	_draw_tiled_texture(ARENA_OUTER_TILE, inner_outer_rect, 48.0, Color(1, 1, 1, 0.18))
+	_draw_tiled_texture(ARENA_OUTER_TILE, inner_outer_rect, 48.0, _theme_outer_tint().lightened(0.08))
 	_draw_arena_ground(board_rect)
-	draw_rect(board_rect, Color(0.92, 0.74, 0.28, 0.92), false, 2.0)
-	draw_rect(Rect2(board_rect.position + Vector2(8, 8), board_rect.size - Vector2(16, 16)), Color(0.22, 0.75, 0.95, 0.18), false, 1.0)
+	draw_rect(board_rect, _theme_frame_color().lightened(0.25), false, 2.0)
+	draw_rect(Rect2(board_rect.position + Vector2(8, 8), board_rect.size - Vector2(16, 16)), _theme_glow_color(), false, 1.0)
 	_draw_lane_labels()
 
 	for col in COLS:
@@ -380,7 +389,9 @@ func _draw() -> void:
 			var tile_texture: Texture2D = BOARD_TILE_FRONT_TEXTURE if row == ROWS - 1 else BOARD_TILE_TEXTURE
 			draw_texture_rect(tile_texture, tile_rect, false, Color(1, 1, 1, 0.78))
 
-			if selected_unit != null and selected_from_bench and grid[col][row] == null:
+			if not _is_valid_player_prep_cell(col, row):
+				draw_texture_rect(BOARD_TILE_SELECTED_TEXTURE, tile_rect, false, Color(0.05, 0.08, 0.12, 0.18))
+			elif selected_unit != null and selected_from_bench and grid[col][row] == null:
 				draw_texture_rect(BOARD_TILE_SELECTED_TEXTURE, tile_rect, false, Color(0.30, 0.95, 0.82, 0.55))
 			elif selected_unit != null and not selected_from_bench and Vector2i(col, row) == selected_from_cell:
 				draw_texture_rect(BOARD_TILE_SELECTED_TEXTURE, tile_rect, false, Color(1.0, 1.0, 1.0, 0.92))
@@ -394,36 +405,50 @@ func _draw_arena_ground(board_rect: Rect2) -> void:
 	var tile_size: float = 32.0
 	var cols: int = int(ceil(board_rect.size.x / tile_size))
 	var rows: int = int(ceil(board_rect.size.y / tile_size))
+	var sand_tint: Color = _theme_sand_tint()
+	var detail_tint: Color = _theme_detail_tint()
+	var accent_tint: Color = _theme_accent_tint()
+	var stone_tint: Color = _theme_stone_tint()
 	for y in rows:
 		for x in cols:
 			var pos: Vector2 = board_rect.position + Vector2(x * tile_size, y * tile_size)
 			var rect: Rect2 = Rect2(pos, Vector2(tile_size, tile_size))
 			var texture: Texture2D = ARENA_SAND_TILE
+			var tint: Color = sand_tint
 			if y == 0 and x == 0:
 				texture = ARENA_STONE_TOP_LEFT
+				tint = stone_tint
 			elif y == 0 and x == cols - 1:
 				texture = ARENA_STONE_TOP_RIGHT
+				tint = stone_tint
 			elif y == rows - 1 and x == 0:
 				texture = ARENA_STONE_BOTTOM_LEFT
+				tint = stone_tint
 			elif y == rows - 1 and x == cols - 1:
 				texture = ARENA_STONE_BOTTOM_RIGHT
+				tint = stone_tint
 			elif y == 0:
 				texture = ARENA_STONE_TOP
+				tint = stone_tint
 			elif y == rows - 1:
 				texture = ARENA_STONE_BOTTOM
+				tint = stone_tint
 			elif x == 0 or x == cols - 1:
 				texture = ARENA_SAND_TILE
+				tint = sand_tint.darkened(0.10)
 			else:
 				if (x + y) % 7 == 0:
 					texture = ARENA_SAND_DETAIL_TILE
+					tint = detail_tint
 				elif (x + y) % 11 == 0:
 					texture = ARENA_SAND_ACCENT_TILE
-			draw_texture_rect(texture, rect, false)
+					tint = accent_tint
+			draw_texture_rect(texture, rect, false, tint)
 
 	var side_tile_rect: Rect2 = Rect2(board_rect.position + Vector2(tile_size, tile_size), Vector2(tile_size, tile_size))
 	var right_tile_rect: Rect2 = Rect2(board_rect.position + Vector2(board_rect.size.x - tile_size * 2.0, tile_size), Vector2(tile_size, tile_size))
-	draw_texture_rect(ARENA_TORCH, side_tile_rect, false)
-	draw_texture_rect(ARENA_TORCH, right_tile_rect, false)
+	draw_texture_rect(ARENA_TORCH, side_tile_rect, false, _theme_glow_color())
+	draw_texture_rect(ARENA_TORCH, right_tile_rect, false, _theme_glow_color())
 
 
 func _draw_tiled_texture(texture: Texture2D, rect: Rect2, tile_size: float = 16.0, tint: Color = Color.WHITE) -> void:
@@ -451,8 +476,8 @@ func _draw_lane_labels() -> void:
 	var font: Font = ThemeDB.fallback_font
 	if font == null:
 		return
-	draw_string(font, backline_pos, "Backline", HORIZONTAL_ALIGNMENT_LEFT, -1, _label_font_size, Color(0.72, 0.82, 0.95, 0.78))
-	draw_string(font, frontline_pos, "Frontline", HORIZONTAL_ALIGNMENT_LEFT, -1, _label_font_size, Color(0.90, 0.84, 0.66, 0.78))
+	draw_string(font, backline_pos, "Backline", HORIZONTAL_ALIGNMENT_LEFT, -1, _label_font_size, _theme_glow_color().lightened(0.25))
+	draw_string(font, frontline_pos, "Frontline", HORIZONTAL_ALIGNMENT_LEFT, -1, _label_font_size, _theme_frame_color().lightened(0.28))
 
 
 func _bind_scene_peers() -> void:
@@ -468,6 +493,8 @@ func _bind_scene_peers() -> void:
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
+	if root.has_signal("round_context_changed") and not root.round_context_changed.is_connected(_on_round_context_changed):
+		root.round_context_changed.connect(_on_round_context_changed)
 
 	if _bench_ui != null:
 		if not _bench_ui.unit_selected_from_bench.is_connected(select_unit_from_bench):
@@ -480,12 +507,143 @@ func _bind_scene_peers() -> void:
 	_on_phase_changed(PREP_PHASE)
 
 
+func _on_round_context_changed(_round_data: Dictionary, opponent_profile: Dictionary, _lobby: Array, _opponent_index: int) -> void:
+	_arena_style = str(opponent_profile.get("style", "frontline"))
+	queue_redraw()
+
+
+func _theme_sand_tint() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(0.95, 0.62, 0.42, 1.0)
+		"mage":
+			return Color(0.84, 0.67, 0.96, 1.0)
+		"assassin":
+			return Color(0.64, 0.60, 0.76, 1.0)
+		"tempo":
+			return Color(0.78, 0.84, 0.55, 1.0)
+		"control":
+			return Color(0.66, 0.76, 0.93, 1.0)
+		"economy":
+			return Color(0.88, 0.74, 0.46, 1.0)
+		_:
+			return Color(0.93, 0.77, 0.58, 1.0)
+
+
+func _theme_outer_tint() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(0.92, 0.56, 0.28, 0.88)
+		"mage":
+			return Color(0.67, 0.50, 0.92, 0.88)
+		"assassin":
+			return Color(0.50, 0.46, 0.72, 0.88)
+		"tempo":
+			return Color(0.62, 0.78, 0.38, 0.88)
+		"control":
+			return Color(0.44, 0.66, 0.90, 0.88)
+		"economy":
+			return Color(0.84, 0.60, 0.24, 0.88)
+		_:
+			return Color(0.92, 0.74, 0.28, 0.88)
+
+
+func _theme_detail_tint() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(0.88, 0.42, 0.24, 1.0)
+		"mage":
+			return Color(0.57, 0.35, 0.82, 1.0)
+		"assassin":
+			return Color(0.47, 0.38, 0.70, 1.0)
+		"tempo":
+			return Color(0.53, 0.74, 0.30, 1.0)
+		"control":
+			return Color(0.34, 0.59, 0.92, 1.0)
+		"economy":
+			return Color(0.75, 0.55, 0.18, 1.0)
+		_:
+			return Color(0.75, 0.50, 0.34, 1.0)
+
+
+func _theme_accent_tint() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(1.00, 0.75, 0.45, 1.0)
+		"mage":
+			return Color(0.86, 0.76, 1.00, 1.0)
+		"assassin":
+			return Color(0.76, 0.64, 0.90, 1.0)
+		"tempo":
+			return Color(0.90, 0.96, 0.58, 1.0)
+		"control":
+			return Color(0.64, 0.82, 1.00, 1.0)
+		"economy":
+			return Color(1.00, 0.85, 0.45, 1.0)
+		_:
+			return Color(0.88, 0.69, 0.48, 1.0)
+
+
+func _theme_stone_tint() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(0.78, 0.65, 0.56, 1.0)
+		"mage":
+			return Color(0.68, 0.62, 0.80, 1.0)
+		"assassin":
+			return Color(0.58, 0.55, 0.66, 1.0)
+		"tempo":
+			return Color(0.66, 0.72, 0.58, 1.0)
+		"control":
+			return Color(0.62, 0.72, 0.84, 1.0)
+		"economy":
+			return Color(0.72, 0.60, 0.44, 1.0)
+		_:
+			return Color(0.66, 0.60, 0.52, 1.0)
+
+
+func _theme_frame_color() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(0.90, 0.48, 0.24, 0.92)
+		"mage":
+			return Color(0.63, 0.42, 0.90, 0.92)
+		"assassin":
+			return Color(0.50, 0.46, 0.72, 0.92)
+		"tempo":
+			return Color(0.45, 0.74, 0.32, 0.92)
+		"control":
+			return Color(0.36, 0.62, 0.90, 0.92)
+		"economy":
+			return Color(0.86, 0.62, 0.22, 0.92)
+		_:
+			return Color(0.92, 0.74, 0.28, 0.92)
+
+
+func _theme_glow_color() -> Color:
+	match _arena_style:
+		"burst":
+			return Color(1.00, 0.77, 0.46, 0.18)
+		"mage":
+			return Color(0.84, 0.70, 1.00, 0.18)
+		"assassin":
+			return Color(0.58, 0.50, 0.82, 0.18)
+		"tempo":
+			return Color(0.72, 0.92, 0.46, 0.18)
+		"control":
+			return Color(0.48, 0.76, 1.00, 0.18)
+		"economy":
+			return Color(1.00, 0.84, 0.40, 0.18)
+		_:
+			return Color(0.22, 0.75, 0.95, 0.18)
+
+
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
 	var content_w: float = UITheme.content_width(view_size)
 	var content_x: float = UITheme.content_left(view_size)
-	var side_pad: float = clampf(content_w * 0.008, 6.0, 14.0)
-	var side_column: float = clampf(content_w * 0.06, 40.0, 72.0)
+	var side_pad: float = clampf(content_w * 0.004, 2.0, 8.0)
+	var side_column: float = clampf(content_w * 0.032, 18.0, 40.0)
 	var top_margin: float = UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
 	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
 	var bench_y: float = shop_y - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP
@@ -500,7 +658,7 @@ func _refresh_layout() -> void:
 	var board_h: float = float(ROWS) * _cell_size
 	_board_offset = Vector2(
 		round(_play_rect.position.x + (_play_rect.size.x - board_w) * 0.5),
-		round(_play_rect.position.y + (_play_rect.size.y - board_h) * 0.40)
+		round(_play_rect.position.y + (_play_rect.size.y - board_h) * 0.48)
 	)
 	_label_font_size = int(clampf(_cell_size * 0.14, 10.0, 14.0))
 	for child in get_children():

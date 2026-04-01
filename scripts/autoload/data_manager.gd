@@ -261,6 +261,13 @@ func get_items_by_category(category: String) -> Array:
 	return result
 
 
+func get_item_role(item_id: String) -> String:
+	var item: Dictionary = get_item(item_id)
+	if item.is_empty():
+		return "utility"
+	return _infer_item_role(item)
+
+
 func get_random_item(category: String = "", mode: String = "component", excluded: Array = [], rng: RandomNumberGenerator = null) -> String:
 	var pool: Array[String] = _build_item_pool(category, mode, excluded)
 	if pool.is_empty():
@@ -286,6 +293,19 @@ func get_random_item(category: String = "", mode: String = "component", excluded
 	return pool[0]
 
 
+func get_random_item_for_role(role: String, category: String = "", mode: String = "component", excluded: Array = [], rng: RandomNumberGenerator = null) -> String:
+	var pool: Array[String] = _build_item_pool(category, mode, excluded)
+	if pool.is_empty():
+		return ""
+	var role_pool: Array[String] = []
+	for item_id in pool:
+		if _infer_item_role(get_item(item_id)) == role:
+			role_pool.append(item_id)
+	if role_pool.is_empty():
+		role_pool = pool
+	return get_random_item_from_pool(role_pool, rng)
+
+
 func get_random_items(count: int, category: String = "", mode: String = "component", rng: RandomNumberGenerator = null) -> Array[String]:
 	var result: Array[String] = []
 	var excluded: Array[String] = []
@@ -296,6 +316,15 @@ func get_random_items(count: int, category: String = "", mode: String = "compone
 		result.append(item_id)
 		excluded.append(item_id)
 	return result
+
+
+func get_random_item_from_pool(pool: Array[String], rng: RandomNumberGenerator = null) -> String:
+	if pool.is_empty():
+		return ""
+	var picker: RandomNumberGenerator = rng if rng != null else RandomNumberGenerator.new()
+	if rng == null:
+		picker.randomize()
+	return pool[picker.randi_range(0, pool.size() - 1)]
 
 
 func _build_item_pool(category: String, mode: String, excluded: Array = []) -> Array[String]:
@@ -402,6 +431,45 @@ func get_unit_portrait_path(unit_id: String) -> String:
 func get_unit_portrait(unit_id: String) -> Texture2D:
 	var path: String = get_unit_portrait_path(unit_id)
 	return load(path) as Texture2D
+
+
+func get_unit_role(unit_id: String) -> String:
+	var unit_data: Dictionary = get_unit(unit_id)
+	if unit_data.is_empty():
+		return "balanced"
+	return _infer_unit_role(unit_data)
+
+
+func get_units_by_role(role: String, cost: int = -1) -> Array:
+	var result: Array = []
+	for unit_id in units:
+		var unit_data: Dictionary = units[unit_id]
+		if cost != -1 and int(unit_data.get("cost", 0)) != cost:
+			continue
+		if _infer_unit_role(unit_data) == role:
+			result.append(unit_id)
+	return result
+
+
+func get_random_unit_for_role(role: String, cost: int = -1, excluded: Array = [], rng: RandomNumberGenerator = null) -> String:
+	var pool: Array[String] = []
+	for unit_id in units:
+		if excluded.has(unit_id):
+			continue
+		var unit_data: Dictionary = units[unit_id]
+		if cost != -1 and int(unit_data.get("cost", 0)) != cost:
+			continue
+		if _infer_unit_role(unit_data) == role:
+			pool.append(unit_id)
+	if pool.is_empty():
+		for unit_id in units:
+			if excluded.has(unit_id):
+				continue
+			var unit_data: Dictionary = units[unit_id]
+			if cost != -1 and int(unit_data.get("cost", 0)) != cost:
+				continue
+			pool.append(unit_id)
+	return get_random_item_from_pool(pool, rng)
 
 
 func get_round(round_num: int) -> Dictionary:
@@ -657,6 +725,56 @@ func _make_ability(ability_name: String, effect: String, power: float, mana: int
 		"radius": area_radius,
 		"description": description
 	}
+
+
+func _infer_unit_role(unit_data: Dictionary) -> String:
+	var stats: Dictionary = unit_data.get("stats", {})
+	var trait_id: String = str(unit_data.get("trait", ""))
+	var race_id: String = str(unit_data.get("race", ""))
+	var ability: Dictionary = _resolve_unit_ability(unit_data)
+	var effect: String = str(ability.get("effect", ""))
+	var range: int = int(stats.get("attack_range", 0))
+	var health: int = int(stats.get("health", 0))
+	var damage: int = int(stats.get("attack_damage", 0))
+	var attack_speed: float = float(stats.get("attack_speed", 0.0))
+	var frontline_traits: Array[String] = ["knight", "vanguard", "guardian", "warrior", "bruiser"]
+	var backline_traits: Array[String] = ["mage", "sorcerer", "ranger", "archer", "caster"]
+	var skirmisher_traits: Array[String] = ["assassin", "duelist", "skirmisher"]
+	var support_effects: Array[String] = ["heal_burst", "shield_burst"]
+	var defensive_effects: Array[String] = ["shield_burst", "heal_burst", "damage_reflect_percent", "max_hp_flat", "armor_flat"]
+	var offensive_effects: Array[String] = ["splash_damage", "line_blast", "chain_damage", "burn_burst", "drain_damage", "execute_strike"]
+	if support_effects.has(effect):
+		return "support"
+	if skirmisher_traits.has(trait_id):
+		return "skirmisher"
+	if backline_traits.has(trait_id) or range >= 3:
+		return "backline"
+	if frontline_traits.has(trait_id) or health >= 700 or damage >= 70 or defensive_effects.has(effect):
+		return "frontline"
+	if offensive_effects.has(effect) or attack_speed >= 1.15:
+		return "backline"
+	if race_id in ["orc", "dwarf"] and health >= 600:
+		return "frontline"
+	return "balanced"
+
+
+func _infer_item_role(item: Dictionary) -> String:
+	var effect: String = str(item.get("effect", ""))
+	var description: String = str(item.get("description", "")).to_lower()
+	match effect:
+		"attack_damage_flat", "attack_speed_flat", "lifesteal_percent", "damage_per_ally_percent", "damage_bonus_percent":
+			return "offense"
+		"armor_flat", "max_hp_flat", "damage_reflect_percent", "revive_once", "team_shield_percent":
+			return "defense"
+		"attack_slow_on_hit":
+			return "tempo"
+		_:
+			pass
+	if "mana" in description or "heal" in description or "shield" in description:
+		return "utility"
+	if "burn" in description or "ricochet" in description or "splash" in description or "chain" in description:
+		return "tempo"
+	return "utility"
 
 
 func _format_threshold_effect(threshold: Dictionary) -> String:

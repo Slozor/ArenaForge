@@ -126,15 +126,13 @@
     },
     {
       "round": 11,
-      "type": "npc",
+      "type": "elite",
       "label": "Dragon Pressure",
       "profile_id": "mira",
       "units": ["crag_chief", "ember_raider", "forge_shaman", "mirth_blade", "moonweaver", "dragon_knight"],
       "reward": {
-        "gold": 5,
-        "item_count": 1,
-        "item_category": "component",
-        "item_mode": "component"
+        "gold": 0,
+        "late_game_choice": true
       }
     },
     {
@@ -164,7 +162,7 @@
     },
     {
       "round": 14,
-      "type": "npc",
+      "type": "elite",
       "label": "Late Game Wall",
       "opponents": [
         { "id": "burst_wall", "profile_id": "vale", "units": ["storm_adept", "moonweaver", "silver_paladin", "stone_bulwark", "grave_archer", "glade_sage"] },
@@ -172,24 +170,19 @@
       ],
       "units": ["storm_adept", "moonweaver", "silver_paladin", "stone_bulwark", "grave_archer", "glade_sage"],
       "reward": {
-        "gold": 6,
-        "item_count": 1,
-        "item_category": "mixed",
-        "item_mode": "mixed",
-        "full_item_chance": 0.50
+        "gold": 0,
+        "late_game_choice": true
       }
     },
     {
       "round": 15,
-      "type": "npc",
+      "type": "boss",
       "label": "Final Duel",
-      "profile_id": "nyx",
+      "profile_id": "obelisk",
       "units": ["dragon_knight", "ember_witch", "spellblade", "soul_reaper", "thornwarden", "silver_paladin", "siegebreaker"],
       "reward": {
-        "gold": 12,
-        "item_count": 2,
-        "item_category": "crafted",
-        "item_mode": "crafted"
+        "gold": 0,
+        "late_game_choice": true
       }
     }
   ]

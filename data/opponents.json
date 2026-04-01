@@ -6,6 +6,10 @@
       "title": "Frontline Captain",
       "avatar": "npc_avatar",
       "style": "frontline",
+      "combat_modifiers": {
+        "health_mult": 1.18,
+        "armor_bonus": 14
+      },
       "threat": "Heavy frontline and disciplined openers.",
       "quote": "Hold the center. Let them crash into us.",
       "reward_hint": "Expect sturdy tanks and long fights."
@@ -16,6 +20,11 @@
       "title": "Sunlit Caster",
       "avatar": "npc_avatar",
       "style": "burst",
+      "combat_modifiers": {
+        "starting_mana": 35,
+        "attack_speed_bonus": 0.12,
+        "cast_time_delta": -0.10
+      },
       "threat": "Fast spell bursts that punish weak backlines.",
       "quote": "The fight is over the moment the light lands.",
       "reward_hint": "Burst rounds reward stronger item timing."
@@ -26,6 +35,11 @@
       "title": "Arena Brute",
       "avatar": "npc_avatar",
       "style": "bruiser",
+      "combat_modifiers": {
+        "health_mult": 1.14,
+        "attack_damage_mult": 1.12,
+        "armor_bonus": 6
+      },
       "threat": "Bruisers stack into the middle and overpower short boards.",
       "quote": "No tricks. Just impact.",
       "reward_hint": "Bring enough frontline to absorb the first swing."
@@ -36,6 +50,11 @@
       "title": "Shadow Duelist",
       "avatar": "npc_avatar",
       "style": "assassin",
+      "combat_modifiers": {
+        "attack_damage_mult": 1.15,
+        "attack_speed_bonus": 0.16,
+        "starting_mana": 15
+      },
       "threat": "Backline pressure and jump threats.",
       "quote": "If your carry blinks, it is already too late.",
       "reward_hint": "Protect your backline and watch flank spacing."
@@ -46,6 +65,11 @@
       "title": "Arcane Planner",
       "avatar": "npc_avatar",
       "style": "mage",
+      "combat_modifiers": {
+        "starting_mana": 30,
+        "attack_speed_bonus": 0.08,
+        "cast_time_delta": -0.10
+      },
       "threat": "Layered casting with backline control.",
       "quote": "There is always a cleaner angle.",
       "reward_hint": "Spread out to reduce spell splash."
@@ -56,6 +80,11 @@
       "title": "Measured Tactician",
       "avatar": "npc_avatar",
       "style": "control",
+      "combat_modifiers": {
+        "starting_mana": 20,
+        "attack_speed_bonus": 0.10,
+        "armor_bonus": 12
+      },
       "threat": "Measured pacing with shields and tempo denial.",
       "quote": "Win slowly, and they will call it inevitable.",
       "reward_hint": "Value mana and sustain in long control rounds."
@@ -66,6 +95,11 @@
       "title": "Late-Game Greed",
       "avatar": "npc_avatar",
       "style": "economy",
+      "combat_modifiers": {
+        "health_mult": 0.95,
+        "attack_speed_bonus": 0.05
+      },
+      "reward_bonus_gold": 4,
       "threat": "Greedy scaling that spikes later in the run.",
       "quote": "You can feel poor now. I will feel stronger later.",
       "reward_hint": "Punish greed before the board caps out."
@@ -76,9 +110,32 @@
       "title": "Adaptive Skirmisher",
       "avatar": "npc_avatar",
       "style": "tempo",
+      "combat_modifiers": {
+        "starting_mana": 15,
+        "attack_speed_bonus": 0.16,
+        "health_mult": 1.06
+      },
       "threat": "Flexible tempo boards with fast repositioning.",
       "quote": "Keep moving. Static boards die first.",
       "reward_hint": "Tempo rounds favor quick upgrades and positioning."
+    },
+    {
+      "id": "obelisk",
+      "name": "Obelisk",
+      "title": "Final Boss",
+      "avatar": "npc_avatar",
+      "style": "boss",
+      "combat_modifiers": {
+        "health_mult": 1.22,
+        "armor_bonus": 16,
+        "starting_mana": 25,
+        "attack_speed_bonus": 0.06,
+        "cast_time_delta": -0.08
+      },
+      "reward_bonus_gold": 6,
+      "threat": "A final wall that mixes front pressure with lethal backline follow-up.",
+      "quote": "The last round exists to prove the board, not the story.",
+      "reward_hint": "Boss rounds reward committing to a final direction."
     }
   ]
 }

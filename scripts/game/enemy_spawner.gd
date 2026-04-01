@@ -13,9 +13,11 @@ const UNIT_SCENE_PATH: String = "res://scenes/units/unit.tscn"
 const UNIT_SCRIPT_PATH: String = "res://scripts/units/unit.gd"
 
 var _unit_scene: PackedScene = null
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	_rng.randomize()
 	_unit_scene = load(UNIT_SCENE_PATH)
 
 
@@ -29,6 +31,7 @@ func spawn_enemy_team(round_num: int, opponent_index: int = -1, opponent_profile
 		return []
 
 	var unit_ids: Array = _resolve_unit_ids(round_entry, opponent_index)
+	unit_ids = _refine_unit_ids_for_style(unit_ids, str(opponent_profile.get("style", "default")), round_num)
 	var positions: Array[Vector2i] = _build_positions_for_style(unit_ids.size(), str(opponent_profile.get("style", "default")))
 	var spawned: Array = []
 
@@ -112,6 +115,8 @@ func _build_positions_for_style(count: int, style: String) -> Array[Vector2i]:
 			return _build_positions_from_row_order(count, [1, 2, 0, 3], false)
 		"economy":
 			return _build_positions_from_row_order(count, [2, 1, 3, 0], false)
+		"boss":
+			return _build_positions_from_row_order(count, [3, 2, 1, 0], true)
 		_:
 			return _build_positions(count)
 
@@ -206,3 +211,76 @@ func _resolve_unit_ids(round_entry: Dictionary, opponent_index: int) -> Array:
 	if unit_ids.is_empty():
 		unit_ids = round_entry.get("enemy_units", [])
 	return unit_ids
+
+
+func _refine_unit_ids_for_style(unit_ids: Array, style: String, round_num: int) -> Array:
+	var prefs: Array[String] = _style_role_preferences(style)
+	if prefs.is_empty() or unit_ids.is_empty():
+		return unit_ids
+	var refined: Array[String] = []
+	var used: Array[String] = []
+	var swaps_left: int = 1 if unit_ids.size() <= 3 else 2
+	if round_num >= 11:
+		swaps_left += 1
+	for original in unit_ids:
+		var unit_id: String = str(original)
+		if unit_id == "":
+			continue
+		var unit_data: Dictionary = DataManager.get_unit(unit_id)
+		var cost: int = int(unit_data.get("cost", 1))
+		var role: String = DataManager.get_unit_role(unit_id)
+		var keep_original: bool = prefs.slice(0, 2).has(role) or _rng.randf() > 0.60 or swaps_left <= 0
+		if keep_original:
+			refined.append(unit_id)
+			used.append(unit_id)
+			continue
+		var replacement: String = _pick_style_unit(cost, prefs, used)
+		if replacement == "":
+			refined.append(unit_id)
+			used.append(unit_id)
+			continue
+		refined.append(replacement)
+		used.append(replacement)
+		swaps_left -= 1
+	return refined
+
+
+func _pick_style_unit(cost: int, role_preferences: Array[String], excluded: Array[String]) -> String:
+	for role in role_preferences:
+		var candidate: String = DataManager.get_random_unit_for_role(role, cost, excluded, _rng)
+		if candidate != "":
+			return candidate
+	var fallback: Array[String] = []
+	for unit_id in DataManager.get_all_unit_ids():
+		if excluded.has(str(unit_id)):
+			continue
+		var unit_data: Dictionary = DataManager.get_unit(str(unit_id))
+		if int(unit_data.get("cost", 0)) == cost:
+			fallback.append(str(unit_id))
+	if fallback.is_empty():
+		for unit_id in DataManager.get_all_unit_ids():
+			var fallback_id: String = str(unit_id)
+			if excluded.has(fallback_id):
+				continue
+			fallback.append(fallback_id)
+	if fallback.is_empty():
+		return ""
+	return fallback[_rng.randi_range(0, fallback.size() - 1)]
+
+
+func _style_role_preferences(style: String) -> Array[String]:
+	match style:
+		"frontline", "bruiser":
+			return ["frontline", "skirmisher", "balanced", "support", "backline"]
+		"burst", "mage":
+			return ["backline", "support", "offense", "balanced", "skirmisher"]
+		"assassin":
+			return ["skirmisher", "backline", "offense", "frontline", "balanced"]
+		"tempo", "control":
+			return ["support", "balanced", "backline", "frontline", "skirmisher"]
+		"economy":
+			return ["balanced", "support", "backline", "frontline", "offense"]
+		"boss":
+			return ["frontline", "balanced", "skirmisher", "support", "backline"]
+		_:
+			return ["balanced", "frontline", "backline", "support", "skirmisher"]

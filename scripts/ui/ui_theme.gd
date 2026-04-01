@@ -59,12 +59,12 @@ const BOARD_BORDER      := Color(0.20, 0.30, 0.45, 0.85)
 
 # ── Layout rhythm (base 1280x720 viewport) ──────────────────────────────────
 const TOP_BAR_HEIGHT := 40.0
-const SHOP_PANEL_HEIGHT := 100.0
-const BENCH_PANEL_HEIGHT := 54.0
+const SHOP_PANEL_HEIGHT := 86.0
+const BENCH_PANEL_HEIGHT := 74.0
 const UI_STACK_GAP := 10.0
 const SCREEN_GUTTER := 16.0
 const CONTENT_MAX_WIDTH := 1728.0
-const RAIL_MAX_WIDTH := 960.0
+const RAIL_MAX_WIDTH := 780.0
 
 
 static func content_width(view_size: Vector2) -> float:

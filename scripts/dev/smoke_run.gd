@@ -35,7 +35,7 @@ func _initialize() -> void:
 				_seed_board(scene)
 				loop.on_combat_ended(true)
 				await process_frame
-		if GameManager.state == GameManager.GameState.GAME_OVER:
+		if GameManager.current_state == GameManager.GameState.GAME_OVER:
 			break
 
 	if guard >= 64:

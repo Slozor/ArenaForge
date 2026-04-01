@@ -117,6 +117,7 @@ func _build_ui() -> void:
 
 	_slots_row = HBoxContainer.new()
 	_slots_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_slots_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_slots_row.add_theme_constant_override("separation", 5)
 	vbox.add_child(_slots_row)
 
@@ -187,16 +188,16 @@ func _refresh_layout() -> void:
 	var left_x: float = UITheme.rail_left(view_size)
 	var bench_h: float = UITheme.BENCH_PANEL_HEIGHT
 	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
-	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP + 2.0
+	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP
 	position = Vector2(left_x, bench_y)
 	size = Vector2(width, bench_h)
 
 	var compact: bool = width < 920.0
 	var large: bool = width >= 1000.0
 	var available_w: float = width - 24.0
-	var slot_size: float = clampf((available_w - float(BENCH_SLOTS - 1) * 5.0) / float(BENCH_SLOTS), 26.0, 56.0 if large else 46.0)
+	var slot_size: float = clampf((available_w - float(BENCH_SLOTS - 1) * 5.0) / float(BENCH_SLOTS), 34.0, 68.0 if large else 56.0)
 	if compact:
-		slot_size = minf(slot_size, 38.0)
+		slot_size = minf(slot_size, 48.0)
 	_slots_row.add_theme_constant_override("separation", clampi(int(round(slot_size * 0.14)), 4, 7))
 
 	for slot in _slots:
@@ -559,6 +560,6 @@ func _refresh_overview() -> void:
 	if _count_label != null:
 		_count_label.text = "%d/%d" % [get_unit_count(), BENCH_SLOTS]
 	if _hint_label != null:
-		_hint_label.text = "Tap a unit to place." if _interaction_enabled else ""
+		_hint_label.text = "Tap to place." if _interaction_enabled else ""
 	for i in _slots.size():
 		_refresh_slot(i)

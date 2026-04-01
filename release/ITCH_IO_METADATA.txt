@@ -1,11 +1,11 @@
 Title: ArenaForge
-Release channel: windows
+Release channel: web
 Price: Free
 Visibility recommendation: Draft first
 Engine: Godot 4
-Primary platform: Windows
+Primary platform: HTML / Browser
 Genre: Strategy / Auto-battler
-Tags: autobattler, strategy, prototype, tactics, godot
+Tags: autobattler, strategy, prototype, tactics, browser, godot
 
 Suggested screenshots:
 1. Shop + board preparation screen
@@ -14,4 +14,4 @@ Suggested screenshots:
 
 Suggested cover text:
 ArenaForge
-Auto-battler Prototype
+Browser Auto-battler Prototype

@@ -503,9 +503,9 @@ func _refresh_layout() -> void:
 	var trait_height: float = 0.0
 	var trait_width: float = 0.0
 	if _trait_list != null:
-		trait_height = clampf(_trait_list.get_combined_minimum_size().y + 20.0, 56.0, minf(160.0, board_h - 16.0))
-		trait_width = clampf(_trait_list.get_combined_minimum_size().x + 22.0, 68.0, 96.0)
-	_trait_panel.visible = _active_trait_count > 0
+		trait_height = clampf(_trait_list.get_combined_minimum_size().y + 12.0, 28.0, minf(84.0, board_h - 20.0))
+		trait_width = clampf(_trait_list.get_combined_minimum_size().x + 14.0, 44.0, 64.0)
+	_trait_panel.visible = _active_trait_count > 0 and _trait_list.get_child_count() > 0
 	if _trait_panel.visible:
 		_trait_panel.position = Vector2(left_x, board_top + 8.0)
 		_trait_panel.size = Vector2(trait_width, trait_height)
@@ -513,21 +513,25 @@ func _refresh_layout() -> void:
 		_trait_panel.position = Vector2(-1000, -1000)
 		_trait_panel.size = Vector2.ZERO
 
-	_opponent_panel.position = Vector2(left_x + width - 172.0, board_top + 46.0)
-	_opponent_panel.size = Vector2(152, 110)
+	_opponent_panel.position = Vector2(left_x + width - 138.0, board_top + 44.0)
+	_opponent_panel.size = Vector2(122, 84)
 
-	var inventory_size: int = GameManager.get_item_inventory_size()
+	var inventory_size: int = GameManager.get_item_inventory().size()
 	_inventory_panel.visible = inventory_size > 0
 	if _inventory_panel.visible:
-		var inventory_w: float = clampf(18.0 + float(mini(inventory_size, 6)) * 22.0, 72.0, 152.0)
+		var inventory_w: float = clampf(8.0 + float(mini(inventory_size, 5)) * 16.0, 34.0, 88.0)
 		_inventory_panel.position = Vector2(left_x + 132.0, top_y + 3.0)
-		_inventory_panel.size = Vector2(inventory_w, 20)
+		_inventory_panel.size = Vector2(inventory_w, 16)
 	else:
 		_inventory_panel.position = Vector2(-1000, -1000)
 		_inventory_panel.size = Vector2.ZERO
 
-	_inspect_panel.position = Vector2(left_x + width - 248.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 114.0)
-	_inspect_panel.size = Vector2(228, 92)
+	if _inspect_panel.visible:
+		_inspect_panel.position = Vector2(left_x + width - 236.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 104.0)
+		_inspect_panel.size = Vector2(216, 84)
+	else:
+		_inspect_panel.position = Vector2(-1000, -1000)
+		_inspect_panel.size = Vector2.ZERO
 
 	_loot_panel.position = Vector2(left_x + width - 260.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 84.0)
 	_loot_panel.size = Vector2(240, 74)
@@ -746,6 +750,11 @@ func _bind_scene_peers() -> void:
 
 func _on_phase_changed(phase: int) -> void:
 	_phase = phase
+	if phase == PREP_PHASE:
+		hide_round_result()
+		_hide_loot_panel()
+		if _augment_panel != null:
+			_augment_panel.visible = false
 	_refresh_phase_label()
 	if phase != PREP_PHASE:
 		_selected_item_index = -1
@@ -777,6 +786,7 @@ func _refresh_overview() -> void:
 	_bench_label.text = "%d/%d" % [_get_bench_count(), _get_bench_capacity()]
 	_refresh_opponent_panel()
 	_refresh_help_text()
+	_refresh_layout()
 
 
 func _get_team_count() -> int:

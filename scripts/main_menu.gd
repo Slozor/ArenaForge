@@ -2,12 +2,14 @@ extends Control
 
 const GAME_SCENE: String = "res://scenes/game/game_scene.tscn"
 const SETTINGS_SCENE: String = "res://scenes/settings_menu.tscn"
+const RELEASE_LABEL: String = "Prototype v0.1 - Web Demo"
 
 var _start_button: Button = null
 var _settings_button: Button = null
 var _quit_button: Button = null
 var _panel: PanelContainer = null
 var _profile_label: Label = null
+var _web_hint_label: Label = null
 
 
 func _ready() -> void:
@@ -88,6 +90,22 @@ func _build_menu() -> void:
 	hint.add_theme_color_override("font_color", Color(0.65, 0.7, 0.76))
 	box.add_child(hint)
 
+	var release_label := Label.new()
+	release_label.text = RELEASE_LABEL
+	release_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	release_label.add_theme_font_size_override("font_size", 11)
+	release_label.add_theme_color_override("font_color", Color(0.86, 0.74, 0.34))
+	box.add_child(release_label)
+
+	_web_hint_label = Label.new()
+	_web_hint_label.text = "Browser demo: best played in landscape at 1280x720 or higher."
+	_web_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_web_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_web_hint_label.add_theme_font_size_override("font_size", 10)
+	_web_hint_label.add_theme_color_override("font_color", Color(0.62, 0.68, 0.75))
+	_web_hint_label.visible = OS.has_feature("web")
+	box.add_child(_web_hint_label)
+
 	_profile_label = Label.new()
 	_profile_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_profile_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -106,6 +124,7 @@ func _build_menu() -> void:
 	_quit_button = _make_menu_button("Quit")
 	_quit_button.pressed.connect(_on_quit_pressed)
 	box.add_child(_quit_button)
+	_quit_button.visible = not OS.has_feature("web")
 
 
 func _make_menu_button(text: String) -> Button:

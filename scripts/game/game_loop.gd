@@ -33,6 +33,7 @@ var _player_prep_positions: Dictionary = {}
 var _loot_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _pending_reward_choices: Dictionary = {}
 var _special_reward_claimed: bool = false
+var _pending_late_game_reward: bool = false
 
 signal phase_changed(phase: Phase)
 signal prep_timer_updated(seconds_left: float)
@@ -83,6 +84,7 @@ func _ready() -> void:
 
 
 func start_round(grant_income: bool = true) -> void:
+	_pending_late_game_reward = false
 	if grant_income:
 		_grant_round_income()
 	_sync_round_context()
@@ -113,7 +115,7 @@ func _enter_combat() -> void:
 	_spawn_enemy_team()
 	_position_units_for_combat(_get_player_units())
 	_position_units_for_combat(enemy_units)
-	combat_controller.start(_get_player_units(), enemy_units)
+	combat_controller.start(_get_player_units(), enemy_units, {"enemy": _build_combat_modifiers(current_opponent_profile)})
 
 
 func _process(delta: float) -> void:
@@ -160,6 +162,11 @@ func on_combat_ended(player_won: bool) -> void:
 			GameManager.take_damage(damage)
 
 	combat_finished.emit(player_won)
+	if player_won and _round_uses_late_game_choice():
+		GameManager.record_special_round_cleared()
+		_pending_late_game_reward = true
+		_offer_late_game_choice(current_round_data.get("reward", {}))
+		return
 	_grant_round_reward()
 
 	if GameManager.player_health <= 0:
@@ -232,6 +239,8 @@ func _grant_round_reward() -> void:
 		return
 	var reward: Dictionary = current_round_data.get("reward", {})
 	var gold_reward: int = reward.get("gold", 0)
+	if current_round_kind != "creep" and not _round_uses_late_game_choice():
+		gold_reward += int(current_opponent_profile.get("reward_bonus_gold", 0))
 	if gold_reward > 0:
 		GameManager.add_gold(gold_reward)
 
@@ -257,13 +266,17 @@ func _roll_reward_items(reward: Dictionary) -> Array[String]:
 	var item_category: String = str(reward.get("item_category", ""))
 	var category_filter: String = "" if item_category == "mixed" else item_category
 	var full_item_chance: float = float(reward.get("full_item_chance", 0.0))
+	var reward_roles: Array[String] = _get_item_reward_roles()
 	var excluded: Array[String] = []
 
 	for _i in item_count:
 		var roll_mode: String = item_mode
 		if item_mode == "mixed":
 			roll_mode = "crafted" if _loot_rng.randf() < full_item_chance else "component"
-		var item_id: String = DataManager.get_random_item(category_filter, roll_mode, excluded, _loot_rng)
+		var preferred_role: String = reward_roles[min(_i, reward_roles.size() - 1)] if not reward_roles.is_empty() else "utility"
+		var item_id: String = DataManager.get_random_item_for_role(preferred_role, category_filter, roll_mode, excluded, _loot_rng)
+		if item_id == "":
+			item_id = DataManager.get_random_item(category_filter, roll_mode, excluded, _loot_rng)
 		if item_id == "":
 			break
 		item_ids.append(item_id)
@@ -282,6 +295,72 @@ func _get_human_synergy_bonus() -> int:
 	elif human_count >= 2:
 		return 1
 	return 0
+
+
+func _get_board_role_profile() -> Dictionary:
+	var profile: Dictionary = {
+		"frontline": 0,
+		"backline": 0,
+		"support": 0,
+		"skirmisher": 0,
+		"balanced": 0
+	}
+	for unit in _get_player_units():
+		if unit == null:
+			continue
+		var role: String = DataManager.get_unit_role(str(unit.unit_id))
+		profile[role] = int(profile.get(role, 0)) + 1
+	return profile
+
+
+func _get_item_reward_roles() -> Array[String]:
+	var profile: Dictionary = _get_board_role_profile()
+	var frontline: int = int(profile.get("frontline", 0))
+	var backline: int = int(profile.get("backline", 0))
+	var support: int = int(profile.get("support", 0))
+	var skirmisher: int = int(profile.get("skirmisher", 0))
+	var roles: Array[String] = []
+	if frontline <= backline:
+		roles.append("defense")
+		roles.append("utility")
+		roles.append("tempo")
+		roles.append("offense")
+	else:
+		roles.append("offense")
+		roles.append("tempo")
+		roles.append("utility")
+		roles.append("defense")
+	if support <= 0:
+		roles.append("utility")
+	if skirmisher <= frontline:
+		roles.append("tempo")
+	roles.append("balanced")
+	return _unique_string_array(roles)
+
+
+func _get_draft_roles() -> Array[String]:
+	var profile: Dictionary = _get_board_role_profile()
+	var roles: Array[String] = []
+	if int(profile.get("frontline", 0)) <= 0:
+		roles.append("frontline")
+	if int(profile.get("backline", 0)) <= 0:
+		roles.append("backline")
+	if int(profile.get("support", 0)) <= 0:
+		roles.append("support")
+	if int(profile.get("skirmisher", 0)) <= 0:
+		roles.append("skirmisher")
+	roles.append_array(["frontline", "backline", "support", "skirmisher", "balanced"])
+	return _unique_string_array(roles)
+
+
+func _unique_string_array(values: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	for value in values:
+		if value == "":
+			continue
+		if not result.has(value):
+			result.append(value)
+	return result
 
 
 func _apply_augments_to_board(units: Array) -> void:
@@ -321,6 +400,10 @@ func _calculate_loss_damage() -> int:
 		stage_base = 3
 	elif GameManager.current_round >= 5:
 		stage_base = 3
+	if current_round_kind == "elite":
+		stage_base += 1
+	elif current_round_kind == "boss":
+		stage_base += 2
 	var surviving_enemies: int = _count_alive_units(enemy_units)
 	var survivor_bonus: int = maxi(1, int(ceil(float(surviving_enemies) * 0.5))) if surviving_enemies > 0 else 0
 	return stage_base + survivor_bonus
@@ -400,7 +483,14 @@ func _get_opponent_index(round_data: Dictionary) -> int:
 
 
 func _is_battle_round() -> bool:
-	return current_round_kind == "combat" or current_round_kind == "creep" or current_round_kind == "npc"
+	return current_round_kind == "combat" or current_round_kind == "creep" or current_round_kind == "npc" or current_round_kind == "elite" or current_round_kind == "boss"
+
+
+func _round_uses_late_game_choice() -> bool:
+	if current_round_data.is_empty():
+		return false
+	var reward: Dictionary = current_round_data.get("reward", {})
+	return bool(reward.get("late_game_choice", false)) or current_round_kind == "elite" or current_round_kind == "boss"
 
 
 func _resolve_opponent_profile(round_data: Dictionary, opponent_index: int) -> Dictionary:
@@ -427,6 +517,48 @@ func _resolve_opponent_profile(round_data: Dictionary, opponent_index: int) -> D
 	return opponent_lobby[clampi(opponent_index, 0, opponent_lobby.size() - 1)]
 
 
+func _build_combat_modifiers(profile: Dictionary) -> Dictionary:
+	var modifiers: Dictionary = profile.get("combat_modifiers", {}).duplicate(true)
+	if modifiers.is_empty():
+		var style: String = str(profile.get("style", ""))
+		match style:
+			"frontline", "bruiser":
+				modifiers = {
+					"health_mult": 1.10,
+					"armor_bonus": 8
+				}
+			"burst", "mage":
+				modifiers = {
+					"starting_mana": 15,
+					"cast_time_delta": -0.05
+				}
+			"assassin":
+				modifiers = {
+					"attack_damage_mult": 1.08,
+					"attack_speed_bonus": 0.08
+				}
+			"tempo", "control":
+				modifiers = {
+					"starting_mana": 10,
+					"attack_speed_bonus": 0.05,
+					"armor_bonus": 4
+				}
+			"economy":
+				modifiers = {
+					"health_mult": 0.98,
+					"attack_speed_bonus": 0.04
+				}
+			"boss":
+				modifiers = {
+					"health_mult": 1.20,
+					"armor_bonus": 14,
+					"starting_mana": 25,
+					"attack_speed_bonus": 0.08,
+					"cast_time_delta": -0.08
+				}
+	return modifiers
+
+
 func _build_opponent_lobby() -> Array:
 	var result: Array = []
 	for opponent_id in DataManager.get_all_opponent_ids():
@@ -451,6 +583,7 @@ func _on_augment_choice_resolved(_augment_id: String) -> void:
 	if current_phase != Phase.RESULT:
 		return
 	if _special_reward_claimed:
+		_pending_late_game_reward = false
 		advance_after_special_round(current_round_kind)
 		return
 	_grant_round_reward()
@@ -467,6 +600,7 @@ func _offer_loot_choice(reward: Dictionary) -> void:
 	var reward_mode: String = str(reward.get("item_mode", reward.get("item_category", "mixed")))
 	var reward_category: String = str(reward.get("item_category", ""))
 	var full_item_chance: float = float(reward.get("full_item_chance", 0.0))
+	var reward_roles: Array[String] = _get_item_reward_roles()
 	for index in 3:
 		var item_ids: Array[String] = []
 		var local_used: Array[String] = used.duplicate()
@@ -474,7 +608,10 @@ func _offer_loot_choice(reward: Dictionary) -> void:
 			var roll_mode: String = reward_mode
 			if reward_mode == "mixed":
 				roll_mode = "crafted" if _loot_rng.randf() < full_item_chance else "component"
-			var item_id: String = DataManager.get_random_item("" if reward_category == "mixed" else reward_category, roll_mode, local_used, _loot_rng)
+			var reward_role: String = reward_roles[min(index, reward_roles.size() - 1)] if not reward_roles.is_empty() else "utility"
+			var item_id: String = DataManager.get_random_item_for_role(reward_role, "" if reward_category == "mixed" else reward_category, roll_mode, local_used, _loot_rng)
+			if item_id == "":
+				item_id = DataManager.get_random_item("" if reward_category == "mixed" else reward_category, roll_mode, local_used, _loot_rng)
 			if item_id == "":
 				break
 			item_ids.append(item_id)
@@ -482,12 +619,11 @@ func _offer_loot_choice(reward: Dictionary) -> void:
 		if item_ids.is_empty():
 			continue
 		used.append_array(item_ids)
-		var first_item: Dictionary = DataManager.get_item(item_ids[0])
 		var choice_id: String = "loot_%d" % index
 		options.append({
 			"id": choice_id,
 			"kind": "loot_reward",
-			"name": "%s + %d Gold" % [str(first_item.get("name", item_ids[0])), reward_gold],
+			"name": "%s Cache + %d Gold" % [reward_roles[min(index, reward_roles.size() - 1)].capitalize() if not reward_roles.is_empty() else "Utility", reward_gold],
 			"description": _format_reward_choice_description(item_ids, reward_gold)
 		})
 		_pending_reward_choices[choice_id] = {
@@ -504,23 +640,12 @@ func _offer_armory_choice(reward: Dictionary) -> void:
 	var options: Array[Dictionary] = []
 	var mode: String = str(reward.get("armory_mode", "component_plus"))
 	var used_items: Array[String] = []
-	var champion_themes: Array[String] = ["offense", "defense", "tempo"]
+	var reward_roles: Array[String] = _get_item_reward_roles()
 	for index in 3:
 		var choice_id: String = "armory_%d" % index
 		var payload: Dictionary = {}
-		if mode == "champion_armory":
-			var theme: String = champion_themes[index]
-			var themed_items: Array[String] = _armory_theme_pool(theme, used_items)
-			if themed_items.is_empty():
-				payload = _build_armory_payload("crafted_plus", used_items)
-			else:
-				var chosen_id: String = themed_items[_loot_rng.randi_range(0, themed_items.size() - 1)]
-				payload = {
-					"items": [chosen_id],
-					"title": "%s Armory" % theme.capitalize()
-				}
-		else:
-			payload = _build_armory_payload(mode, used_items)
+		var role: String = reward_roles[min(index, reward_roles.size() - 1)] if not reward_roles.is_empty() else "utility"
+		payload = _build_armory_payload(mode, used_items, role)
 		if payload.is_empty():
 			continue
 		var item_ids: Array[String] = payload.get("items", [])
@@ -538,6 +663,71 @@ func _offer_armory_choice(reward: Dictionary) -> void:
 		hud_ui.show_reward_choices("Choose an Armory Reward", options)
 
 
+func _offer_late_game_choice(reward: Dictionary) -> void:
+	_pending_reward_choices.clear()
+	var options: Array[Dictionary] = []
+	var role_profile: Dictionary = _get_board_role_profile()
+	var strongest_role: String = "utility"
+	var strongest_value: int = -1
+	for role_name in ["frontline", "backline", "support", "skirmisher", "balanced"]:
+		var role_value: int = int(role_profile.get(role_name, 0))
+		if role_value > strongest_value:
+			strongest_value = role_value
+			strongest_role = role_name
+	var role_choices: Array[Dictionary] = [
+		{
+			"id": "late_offense",
+			"title": "%s Forge" % strongest_role.capitalize(),
+			"role": "offense",
+			"mode": "champion_armory",
+			"gold": 6,
+			"follow_up_augment": false
+		},
+		{
+			"id": "late_defense",
+			"title": "%s Bastion" % strongest_role.capitalize(),
+			"role": "defense",
+			"mode": "crafted_plus",
+			"gold": 6,
+			"follow_up_augment": false
+		},
+		{
+			"id": "late_utility",
+			"title": "%s Insight" % strongest_role.capitalize(),
+			"role": "utility",
+			"mode": "mixed",
+			"gold": 4,
+			"follow_up_augment": true
+		}
+	]
+	for choice in role_choices:
+		var payload: Dictionary = _build_armory_payload(str(choice.get("mode", "mixed")), [], str(choice.get("role", "utility")))
+		if payload.is_empty():
+			continue
+		var item_ids: Array[String] = payload.get("items", [])
+		if item_ids.is_empty():
+			continue
+		payload["gold"] = int(choice.get("gold", 0)) + int(reward.get("gold", 0))
+		payload["follow_up_augment"] = bool(choice.get("follow_up_augment", false))
+		payload["title"] = str(choice.get("title", "Late Reward"))
+		payload["advance_after_choice"] = true
+		var choice_id: String = str(choice.get("id", "late_reward"))
+		options.append({
+			"id": choice_id,
+			"kind": "loot_reward",
+			"name": str(payload.get("title", "Late Reward")),
+			"description": _format_reward_choice_description(item_ids, int(payload.get("gold", 0)))
+		})
+		_pending_reward_choices[choice_id] = payload
+	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
+		var title: String = "Choose Your Spoils"
+		if current_round_kind == "boss":
+			title = "Boss Spoils"
+		elif current_round_kind == "elite":
+			title = "Elite Spoils"
+		hud_ui.show_reward_choices(title, options)
+
+
 func _offer_draft_choice(reward: Dictionary) -> void:
 	_pending_reward_choices.clear()
 	if bool(reward.get("draft_units", false)):
@@ -545,6 +735,7 @@ func _offer_draft_choice(reward: Dictionary) -> void:
 		return
 	var options: Array[Dictionary] = []
 	var used: Array[String] = []
+	var reward_roles: Array[String] = _get_item_reward_roles()
 	for explicit in reward.get("items", []):
 		var item_id: String = str(explicit)
 		if item_id == "" or used.has(item_id):
@@ -558,15 +749,17 @@ func _offer_draft_choice(reward: Dictionary) -> void:
 			"description": DataManager.get_item_tooltip(item_id)
 		})
 	while options.size() < 3:
-		var rolled_id: String = DataManager.get_random_item("", "crafted", used, _loot_rng)
+		var reward_role: String = reward_roles[min(options.size(), reward_roles.size() - 1)] if not reward_roles.is_empty() else "utility"
+		var rolled_id: String = DataManager.get_random_item_for_role(reward_role, "", "crafted", used, _loot_rng)
+		if rolled_id == "":
+			rolled_id = DataManager.get_random_item("", "crafted", used, _loot_rng)
 		if rolled_id == "":
 			break
 		used.append(rolled_id)
-		var rolled_data: Dictionary = DataManager.get_item(rolled_id)
 		options.append({
 			"id": rolled_id,
 			"kind": "draft_reward",
-			"name": str(rolled_data.get("name", rolled_id)),
+			"name": "%s Cache" % reward_role.capitalize(),
 			"description": DataManager.get_item_tooltip(rolled_id)
 		})
 	for option in options:
@@ -583,8 +776,10 @@ func _offer_unit_draft_choice(reward: Dictionary) -> void:
 	var options: Array[Dictionary] = []
 	var used: Array[String] = []
 	var draft_costs: Array = reward.get("draft_costs", [2, 2, 3])
+	var draft_roles: Array[String] = _get_draft_roles()
 	for index in draft_costs.size():
-		var unit_id: String = _roll_draft_unit(int(draft_costs[index]), used)
+		var preferred_role: String = draft_roles[min(index, draft_roles.size() - 1)] if not draft_roles.is_empty() else "balanced"
+		var unit_id: String = _choose_draft_unit(int(draft_costs[index]), preferred_role, used)
 		if unit_id == "":
 			continue
 		used.append(unit_id)
@@ -593,7 +788,7 @@ func _offer_unit_draft_choice(reward: Dictionary) -> void:
 		options.append({
 			"id": choice_id,
 			"kind": "draft_reward",
-			"name": str(unit_data.get("name", unit_id)),
+			"name": "%s Recruit" % str(unit_data.get("name", unit_id)),
 			"description": _format_unit_draft_description(unit_data)
 		})
 		_pending_reward_choices[choice_id] = {
@@ -605,38 +800,55 @@ func _offer_unit_draft_choice(reward: Dictionary) -> void:
 		hud_ui.show_reward_choices("Choose a Recruit", options)
 
 
-func _build_armory_payload(mode: String, excluded_items: Array[String]) -> Dictionary:
+func _build_armory_payload(mode: String, excluded_items: Array[String], role: String = "utility") -> Dictionary:
 	var payload: Dictionary = {}
 	match mode:
-		"crafted_plus":
-			var crafted_id: String = DataManager.get_random_item("", "crafted", excluded_items, _loot_rng)
-			var component_id: String = DataManager.get_random_item("", "component", excluded_items, _loot_rng)
+		"crafted_plus", "champion_armory":
+			var crafted_id: String = DataManager.get_random_item_for_role(role, "", "crafted", excluded_items, _loot_rng)
+			if crafted_id == "":
+				crafted_id = DataManager.get_random_item("", "crafted", excluded_items, _loot_rng)
+			var component_id: String = DataManager.get_random_item_for_role(role, "", "component", excluded_items, _loot_rng)
+			if component_id == "":
+				component_id = DataManager.get_random_item("", "component", excluded_items, _loot_rng)
 			if crafted_id == "":
 				return {}
 			var items: Array[String] = [crafted_id]
 			if component_id != "":
 				items.append(component_id)
 			payload["items"] = items
-			payload["title"] = "%s Package" % str(DataManager.get_item(crafted_id).get("name", crafted_id))
+			payload["title"] = "%s Package" % role.capitalize()
 		"component_plus":
-			var first_component: String = DataManager.get_random_item("", "component", excluded_items, _loot_rng)
+			var first_component: String = DataManager.get_random_item_for_role(role, "", "component", excluded_items, _loot_rng)
+			if first_component == "":
+				first_component = DataManager.get_random_item("", "component", excluded_items, _loot_rng)
 			if first_component == "":
 				return {}
 			var local_excluded: Array[String] = excluded_items.duplicate()
 			local_excluded.append(first_component)
-			var second_component: String = DataManager.get_random_item("", "component", local_excluded, _loot_rng)
+			var second_component: String = DataManager.get_random_item_for_role(role, "", "component", local_excluded, _loot_rng)
+			if second_component == "":
+				second_component = DataManager.get_random_item("", "component", local_excluded, _loot_rng)
 			var items: Array[String] = [first_component]
 			if second_component != "":
 				items.append(second_component)
 			payload["items"] = items
-			payload["title"] = "Component Armory"
+			payload["title"] = "%s Components" % role.capitalize()
 		_:
-			var mixed_item: String = DataManager.get_random_item("", "mixed", excluded_items, _loot_rng)
+			var mixed_item: String = DataManager.get_random_item_for_role(role, "", "mixed", excluded_items, _loot_rng)
+			if mixed_item == "":
+				mixed_item = DataManager.get_random_item("", "mixed", excluded_items, _loot_rng)
 			if mixed_item == "":
 				return {}
 			payload["items"] = [mixed_item]
-			payload["title"] = "Armory Pick"
+			payload["title"] = "%s Armory" % role.capitalize()
 	return payload
+
+
+func _choose_draft_unit(cost: int, role: String, excluded: Array[String]) -> String:
+	var unit_id: String = DataManager.get_random_unit_for_role(role, cost, excluded, _loot_rng)
+	if unit_id == "":
+		unit_id = _roll_draft_unit(cost, excluded)
+	return unit_id
 
 
 func _armory_theme_pool(theme: String, excluded_items: Array[String]) -> Array[String]:
@@ -686,7 +898,10 @@ func _on_selection_chosen(kind: String, choice_id: String) -> void:
 		if not options.is_empty():
 			GameManager.offer_augment_choices(options)
 			return
-	combat_finished.emit(true)
+	if not _pending_late_game_reward:
+		combat_finished.emit(true)
+	else:
+		_pending_late_game_reward = false
 	advance_after_special_round(kind)
 
 
@@ -741,6 +956,7 @@ func _format_unit_draft_description(unit_data: Dictionary) -> String:
 	var lines: Array[String] = []
 	lines.append("%s %s" % [str(unit_data.get("race", "")).capitalize(), str(unit_data.get("trait", "")).capitalize()])
 	lines.append("%d-cost recruit" % int(unit_data.get("cost", 1)))
+	lines.append("Role: %s" % DataManager.get_unit_role(str(unit_data.get("id", ""))).capitalize())
 	var stats: Dictionary = unit_data.get("stats", {})
 	lines.append("%d HP  %d AD  %s AS" % [
 		int(stats.get("health", 0)),

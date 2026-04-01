@@ -45,7 +45,7 @@ signal unit_died(unit, is_player_unit: bool)
 signal combat_ended(player_won: bool)
 
 
-func start(p_units: Array, e_units: Array) -> void:
+func start(p_units: Array, e_units: Array, battle_modifiers: Dictionary = {}) -> void:
 	player_units = p_units.duplicate()
 	enemy_units = e_units.duplicate()
 	_is_running = true
@@ -62,15 +62,29 @@ func start(p_units: Array, e_units: Array) -> void:
 
 	for unit in player_units + enemy_units:
 		unit.reset_combat_state()
-		_apply_combat_start_item_effects(unit)
 		_register_position(unit)
 
 	# Initialize per-unit state
 	for unit in player_units + enemy_units:
+		var enemy_modifiers: Dictionary = battle_modifiers.get("enemy", {})
+		if enemy_modifiers.is_empty() and battle_modifiers.has("health_mult"):
+			enemy_modifiers = battle_modifiers
+		var player_modifiers: Dictionary = battle_modifiers.get("player", {})
+		if player_modifiers.is_empty() and battle_modifiers.has("player_health_mult"):
+			player_modifiers = battle_modifiers
+		var side_modifiers: Dictionary = enemy_modifiers if unit in enemy_units else player_modifiers
+		_apply_side_modifiers(unit, side_modifiers)
 		var state: Dictionary = {}
-		PassiveHandler.on_combat_start(unit, state)
 		var ability: Dictionary = DataManager.get_unit_ability(unit.unit_id)
+		var item_identity: Dictionary = _apply_combat_start_item_effects(unit, ability)
+		PassiveHandler.on_combat_start(unit, state)
 		unit.consume_mana()
+		var starting_mana: int = int(side_modifiers.get("starting_mana", 0)) + int(item_identity.get("starting_mana", 0))
+		if starting_mana > 0:
+			unit.gain_mana(starting_mana)
+		var cast_time_delta: float = float(side_modifiers.get("cast_time_delta", 0.0)) + float(item_identity.get("cast_time_delta", 0.0))
+		if cast_time_delta != 0.0:
+			ability["cast_time"] = maxf(0.10, float(ability.get("cast_time", 0.35)) + cast_time_delta)
 		unit.finish_cast()
 		_unit_state[unit.get_instance_id()] = {
 			"atk_timer": 1.0 / maxf(unit.get_attack_speed(), 0.1),
@@ -91,6 +105,27 @@ func start(p_units: Array, e_units: Array) -> void:
 	for unit in player_units + enemy_units:
 		if not unit.died.is_connected(_on_unit_died):
 			unit.died.connect(_on_unit_died)
+
+
+func _apply_side_modifiers(unit, modifiers: Dictionary) -> void:
+	if modifiers.is_empty() or unit == null:
+		return
+	var health_mult: float = float(modifiers.get("health_mult", 1.0))
+	if health_mult != 1.0:
+		unit.max_health = maxi(1, int(round(float(unit.max_health) * health_mult)))
+		unit.current_health = unit.get_max_health()
+	var attack_damage_mult: float = float(modifiers.get("attack_damage_mult", 1.0))
+	if attack_damage_mult != 1.0:
+		unit.attack_damage = maxi(1, int(round(float(unit.attack_damage) * attack_damage_mult)))
+	var armor_bonus: int = int(modifiers.get("armor_bonus", 0))
+	if armor_bonus != 0:
+		unit.armor += armor_bonus
+	var attack_speed_bonus: float = float(modifiers.get("attack_speed_bonus", 0.0))
+	if attack_speed_bonus != 0.0:
+		unit.attack_speed += attack_speed_bonus
+	if not modifiers.is_empty():
+		unit.health_changed.emit(unit.current_health, unit.get_max_health())
+		unit.queue_redraw()
 
 
 func stop() -> void:
@@ -398,6 +433,9 @@ func _apply_item_proc_on_hit(attacker, defender, damage_dealt: int) -> void:
 
 func _apply_attack_item_bonuses(attacker, base_damage: int) -> int:
 	var multiplier: float = 1.0
+	var role_profile: Dictionary = _get_item_role_profile(attacker)
+	multiplier += minf(0.18, float(role_profile.get("offense", 0)) * 0.04)
+	multiplier += minf(0.08, float(role_profile.get("tempo", 0)) * 0.02)
 	for item_id in attacker.get_equipped_items():
 		match item_id:
 			"rage_crown":
@@ -557,6 +595,7 @@ func _tick_casts(delta: float) -> void:
 		us["cast_timer"] = 0.0
 		_unit_state[unit.get_instance_id()] = us
 		if int(unit.state) != DEAD_STATE:
+			unit.play_cast_pulse()
 			AbilitySystem.resolve_ability(
 				unit,
 				us.get("ability", {}),
@@ -572,6 +611,7 @@ func _tick_casts(delta: float) -> void:
 func _gain_mana(unit, amount: int) -> void:
 	if unit == null or amount <= 0 or int(unit.state) == DEAD_STATE:
 		return
+	amount += int(_get_item_role_profile(unit).get("utility", 0))
 	var id: int = unit.get_instance_id()
 	var us: Dictionary = _unit_state.get(id, {})
 	if us.get("casting", false):
@@ -580,11 +620,48 @@ func _gain_mana(unit, amount: int) -> void:
 		_begin_cast(unit)
 
 
-func _apply_combat_start_item_effects(unit) -> void:
+func _apply_combat_start_item_effects(unit, _ability: Dictionary = {}) -> Dictionary:
+	var role_profile: Dictionary = _get_item_role_profile(unit)
+	var adjustments: Dictionary = {
+		"starting_mana": 0,
+		"cast_time_delta": 0.0
+	}
+	var offense_count: int = int(role_profile.get("offense", 0))
+	var defense_count: int = int(role_profile.get("defense", 0))
+	var tempo_count: int = int(role_profile.get("tempo", 0))
+	var utility_count: int = int(role_profile.get("utility", 0))
+	if offense_count > 0:
+		unit.attack_damage += offense_count * 4
+	if defense_count > 0:
+		unit.armor += defense_count * 4
+		unit.heal(maxi(1, int(round(float(unit.get_max_health()) * 0.04 * float(defense_count)))))
+	if tempo_count > 0:
+		unit.attack_speed += float(tempo_count) * 0.05
+	if utility_count > 0:
+		adjustments["starting_mana"] = utility_count * 8
+		adjustments["cast_time_delta"] = -0.02 * float(utility_count)
 	for item_id in unit.get_equipped_items():
 		match item_id:
 			"heartward_talisman":
 				unit.heal(maxi(1, int(round(float(unit.get_max_health()) * 0.12))))
+	unit.health_changed.emit(unit.current_health, unit.get_max_health())
+	unit.queue_redraw()
+	return adjustments
+
+
+func _get_item_role_profile(unit) -> Dictionary:
+	var profile: Dictionary = {
+		"offense": 0,
+		"defense": 0,
+		"tempo": 0,
+		"utility": 0
+	}
+	if unit == null:
+		return profile
+	for item_id in unit.get_equipped_items():
+		var role: String = DataManager.get_item_role(str(item_id))
+		profile[role] = int(profile.get(role, 0)) + 1
+	return profile
 
 
 func _begin_cast(unit) -> void:

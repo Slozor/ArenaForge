@@ -31,10 +31,14 @@
 - `Embed`: click to play
 - `Viewport`: 1280x720 or responsive page embed
 - `Fullscreen button`: enabled
+- `Automatically start`: disabled
+- `Mobile friendly`: enabled only after a real touch pass
 
 ## Before public browser release
 
+- upload `build/ArenaForge-web.zip`
+- set `index.html` as the launch file
 - verify tap/click inspect for board and combat units in exported HTML
 - do one browser-specific UI polish pass
-- verify one exported HTML build locally before upload
-- follow the staged plan in `ITCH_IO_AND_PVP_ROADMAP.md`
+- verify one exported HTML build locally before switching visibility from draft
+- keep [CREDITS_AND_LICENSES.md](C:\Users\krist\Documents\ArenaForge\release\CREDITS_AND_LICENSES.md) alongside release notes for attribution hygiene

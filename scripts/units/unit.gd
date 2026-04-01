@@ -262,12 +262,9 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var body_color: Color = _race_color()
 	var accent_color: Color = _trait_color()
-	var cost_color: Color = _cost_color()
-	var team_ring: Color = Color(0.34, 0.72, 1.0, 0.72) if not is_enemy_unit else Color(1.0, 0.42, 0.42, 0.72)
-	var shadow_rect: Rect2 = Rect2(Vector2(-28, 28), Vector2(56, 8))
-	draw_rect(shadow_rect, Color(0, 0, 0, 0.26), true)
-	draw_rect(Rect2(Vector2(-34, -42), Vector2(68, 72)), team_ring, false, 2.0)
-	draw_rect(Rect2(Vector2(-32, -40), Vector2(64, 68)), cost_color.darkened(0.4), false, 2.0)
+	var team_ring: Color = Color(0.34, 0.72, 1.0, 0.22) if not is_enemy_unit else Color(1.0, 0.42, 0.42, 0.22)
+	draw_circle(Vector2(0, 30), 22.0, Color(0, 0, 0, 0.18))
+	draw_circle(Vector2.ZERO, 30.0, team_ring)
 	_draw_pixel_sprite(body_color, accent_color)
 
 	if get_max_health() > 0:
@@ -303,8 +300,7 @@ func _draw_pixel_sprite(body_color: Color, accent_color: Color) -> void:
 	var dark: Color = body_color.darkened(0.35)
 	var light: Color = body_color.lightened(0.16)
 	if portrait_texture != null:
-		draw_texture_rect(portrait_texture, Rect2(Vector2(-34, -42), Vector2(68, 68)), false, Color.WHITE)
-		draw_rect(Rect2(Vector2(-36, -44), Vector2(72, 72)), accent_color.darkened(0.05), false, 2.0)
+		draw_texture_rect(portrait_texture, Rect2(Vector2(-22, -30), Vector2(44, 44)), false, Color.WHITE)
 		return
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36, 14)), light, true)
 	draw_rect(Rect2(Vector2(-20, -10), Vector2(40, 24)), body_color, true)
