@@ -59,16 +59,20 @@ const BOARD_BORDER      := Color(0.20, 0.30, 0.45, 0.85)
 
 # ── Layout rhythm (base 1280x720 viewport) ──────────────────────────────────
 const TOP_BAR_HEIGHT := 40.0
-const SHOP_PANEL_HEIGHT := 86.0
-const BENCH_PANEL_HEIGHT := 74.0
-const UI_STACK_GAP := 10.0
+const SHOP_PANEL_HEIGHT := 60.0
+const BENCH_PANEL_HEIGHT := 72.0
+const ITEM_PANEL_HEIGHT := 44.0
+const UI_STACK_GAP := 12.0
 const SCREEN_GUTTER := 16.0
+const BOTTOM_GUTTER := 18.0
+const LOWER_RAIL_LIFT := 104.0
 const CONTENT_MAX_WIDTH := 1728.0
 const RAIL_MAX_WIDTH := 780.0
+const ITEM_RAIL_MAX_WIDTH := 520.0
 
 
 static func content_width(view_size: Vector2) -> float:
-	return minf(maxf(1280.0, view_size.x - SCREEN_GUTTER * 2.0), CONTENT_MAX_WIDTH)
+	return minf(maxf(320.0, view_size.x - SCREEN_GUTTER * 2.0), CONTENT_MAX_WIDTH)
 
 
 static func content_left(view_size: Vector2) -> float:
@@ -82,6 +86,15 @@ static func rail_width(view_size: Vector2) -> float:
 
 static func rail_left(view_size: Vector2) -> float:
 	var width: float = rail_width(view_size)
+	return round((view_size.x - width) * 0.5)
+
+
+static func item_rail_width(view_size: Vector2) -> float:
+	return minf(content_width(view_size) * 0.42, ITEM_RAIL_MAX_WIDTH)
+
+
+static func item_rail_left(view_size: Vector2) -> float:
+	var width: float = item_rail_width(view_size)
 	return round((view_size.x - width) * 0.5)
 
 

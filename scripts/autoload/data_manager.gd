@@ -11,6 +11,42 @@ var augments: Dictionary = {}    # augment_id -> augment data dict
 var encounters: Dictionary = {}  # encounter_id -> encounter data dict
 var _texture_cache: Dictionary = {}
 var _unit_tooltip_cache: Dictionary = {}
+var _tiny_dungeon_item_icons: Dictionary = {
+	"steel_blade": "res://assets/items/tile_0104.png",
+	"iron_plating": "res://assets/items/tile_0105.png",
+	"life_crystal": "res://assets/items/tile_0130.png",
+	"swift_gear": "res://assets/items/tile_0106.png",
+	"forged_blade": "res://assets/items/tile_0104.png",
+	"reinforced_mail": "res://assets/items/tile_0105.png",
+	"giant_core": "res://assets/items/tile_0130.png",
+	"storm_bow": "res://assets/items/tile_0106.png",
+	"iron_sword": "res://assets/items/tile_0104.png",
+	"chainmail": "res://assets/items/tile_0105.png",
+	"giants_belt": "res://assets/items/tile_0130.png",
+	"recurve_bow": "res://assets/items/tile_0106.png",
+	"vampiric_blade": "res://assets/items/tile_0103.png",
+	"thornmail": "res://assets/items/tile_0105.png",
+	"rage_crown": "res://assets/items/tile_0131.png",
+	"frozen_heart": "res://assets/items/tile_0106.png",
+	"ember_shard": "res://assets/items/tile_0131.png",
+	"bulwark_plate": "res://assets/items/tile_0117.png",
+	"wind_thread": "res://assets/items/tile_0119.png",
+	"moon_dust": "res://assets/items/tile_0129.png",
+	"sun_shard": "res://assets/items/tile_0107.png",
+	"mist_thread": "res://assets/items/tile_0119.png",
+	"stone_ember": "res://assets/items/tile_0117.png",
+	"wyrm_scale": "res://assets/items/tile_0118.png",
+	"blazing_edge": "res://assets/items/tile_0131.png",
+	"bastion_mail": "res://assets/items/tile_0117.png",
+	"gale_serum": "res://assets/items/tile_0106.png",
+	"elder_core": "res://assets/items/tile_0130.png",
+	"sunforged_plate": "res://assets/items/tile_0107.png",
+	"storm_lance": "res://assets/items/tile_0118.png",
+	"heartward_talisman": "res://assets/items/tile_0130.png",
+	"phantom_quiver": "res://assets/items/tile_0119.png",
+	"archmage_foci": "res://assets/items/tile_0129.png",
+	"iron_cloak": "res://assets/items/tile_0105.png"
+}
 var _tiny_dungeon_portraits: Dictionary = {
 	"iron_guard": "res://assets/kenney_tiny_dungeon/Tiles/tile_0087.png",
 	"watchman": "res://assets/kenney_tiny_dungeon/Tiles/tile_0085.png",
@@ -244,6 +280,9 @@ func get_item(item_id: String) -> Dictionary:
 
 func get_item_icon(item_id: String) -> Texture2D:
 	var item: Dictionary = get_item(item_id)
+	var icon_id: String = str(item.get("icon", item_id))
+	if _tiny_dungeon_item_icons.has(icon_id):
+		return _load_texture_cached(_tiny_dungeon_item_icons[icon_id])
 	var category: String = str(item.get("category", "component"))
 	var path: String = "res://assets/items/icon_%s.svg" % category
 	if FileAccess.file_exists(path):
@@ -749,7 +788,7 @@ func _infer_unit_role(unit_data: Dictionary) -> String:
 	var race_id: String = str(unit_data.get("race", ""))
 	var ability: Dictionary = _resolve_unit_ability(unit_data)
 	var effect: String = str(ability.get("effect", ""))
-	var range: int = int(stats.get("attack_range", 0))
+	var attack_range_value: int = int(stats.get("attack_range", 0))
 	var health: int = int(stats.get("health", 0))
 	var damage: int = int(stats.get("attack_damage", 0))
 	var attack_speed: float = float(stats.get("attack_speed", 0.0))
@@ -763,7 +802,7 @@ func _infer_unit_role(unit_data: Dictionary) -> String:
 		return "support"
 	if skirmisher_traits.has(trait_id):
 		return "skirmisher"
-	if backline_traits.has(trait_id) or range >= 3:
+	if backline_traits.has(trait_id) or attack_range_value >= 3:
 		return "backline"
 	if frontline_traits.has(trait_id) or health >= 700 or damage >= 70 or defensive_effects.has(effect):
 		return "frontline"

@@ -62,6 +62,7 @@ var _pulse_scale: float = 1.0
 var _is_dying: bool = false
 var _cast_strength: float = 0.0
 var unit_visual_scale: float = 1.0
+var _death_tween: Tween = null
 
 signal died(unit)
 signal health_changed(current: int, maximum: int)
@@ -91,6 +92,7 @@ func init(data: Dictionary) -> void:
 
 
 func reset_combat_state() -> void:
+	_stop_death_tween()
 	_recalculate_stats()
 	current_health = get_max_health()
 	state = STATE_IDLE
@@ -366,9 +368,10 @@ func set_slow_visual(duration_scale: float = 1.0) -> void:
 
 func play_death_pop() -> void:
 	_is_dying = true
-	var tween: Tween = create_tween()
-	tween.tween_property(self, "scale", Vector2.ONE * 1.2, 0.08)
-	tween.tween_property(self, "modulate", Color(1.0, 0.35, 0.35, 0.0), 0.22)
+	_stop_death_tween()
+	_death_tween = create_tween()
+	_death_tween.tween_property(self, "scale", Vector2.ONE * 1.2, 0.08)
+	_death_tween.tween_property(self, "modulate", Color(1.0, 0.35, 0.35, 0.0), 0.22)
 
 
 func _apply_ability_data(data: Dictionary) -> void:
@@ -387,10 +390,17 @@ func _apply_ability_data(data: Dictionary) -> void:
 
 
 func cancel_death_visuals() -> void:
+	_stop_death_tween()
 	_is_dying = false
 	scale = Vector2.ONE * unit_visual_scale
 	modulate = Color.WHITE
 	queue_redraw()
+
+
+func _stop_death_tween() -> void:
+	if _death_tween != null and is_instance_valid(_death_tween):
+		_death_tween.kill()
+	_death_tween = null
 
 
 func _race_color() -> Color:

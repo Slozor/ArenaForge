@@ -115,9 +115,9 @@ func set_unit(id: String) -> void:
 	unit_id = id
 	unit_data = DataManager.get_unit(id)
 	is_empty = unit_data.is_empty()
-	tooltip_text = "" if is_empty else DataManager.get_unit_tooltip(unit_id)
+	tooltip_text = ""
 	if _tap_area != null:
-		_tap_area.tooltip_text = tooltip_text
+		_tap_area.tooltip_text = ""
 	_refresh_display()
 
 

@@ -5,19 +5,26 @@ class_name TraitSystem
 # Returns active synergies given a list of units on the board.
 # Returns: Array of { "id", "type" ("race"|"class"), "data", "active_threshold" }
 static func get_active_synergies(board_units: Array) -> Array:
-	var race_counts: Dictionary = {}
-	var class_counts: Dictionary = {}
+	var race_units: Dictionary = {}
+	var class_units: Dictionary = {}
 
 	for unit in board_units:
+		if unit == null:
+			continue
+		var unique_unit_id: String = str(unit.unit_id)
 		if unit.race != "":
-			race_counts[unit.race] = race_counts.get(unit.race, 0) + 1
+			if not race_units.has(unit.race):
+				race_units[unit.race] = {}
+			race_units[unit.race][unique_unit_id] = true
 		if unit.trait_id != "":
-			class_counts[unit.trait_id] = class_counts.get(unit.trait_id, 0) + 1
+			if not class_units.has(unit.trait_id):
+				class_units[unit.trait_id] = {}
+			class_units[unit.trait_id][unique_unit_id] = true
 
 	var active: Array = []
 
-	for race_id in race_counts:
-		var count: int = race_counts[race_id]
+	for race_id in race_units:
+		var count: int = race_units[race_id].size()
 		var race_data: Dictionary = DataManager.get_race(race_id)
 		if race_data.is_empty():
 			continue
@@ -31,8 +38,8 @@ static func get_active_synergies(board_units: Array) -> Array:
 				"unit_count": count
 			})
 
-	for class_id in class_counts:
-		var count: int = class_counts[class_id]
+	for class_id in class_units:
+		var count: int = class_units[class_id].size()
 		var class_data: Dictionary = DataManager.get_class_data(class_id)
 		if class_data.is_empty():
 			continue

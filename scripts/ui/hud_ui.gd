@@ -30,6 +30,7 @@ var _trait_list: VBoxContainer = null
 var _trait_entries: Dictionary = {}
 
 var _inventory_panel: PanelContainer = null
+var _inventory_title: Label = null
 var _inventory_row: HBoxContainer = null
 var _inventory_slots: Array[TextureRect] = []
 var _inventory_slot_bgs: Array[ColorRect] = []
@@ -67,6 +68,7 @@ var _round_opponent_index: int = 0
 var _active_trait_count: int = 0
 var _default_inspect_text: String = ""
 var _announce_token: int = 0
+var _prep_timer_seconds: float = 0.0
 
 signal skip_prep_pressed()
 signal restart_requested()
@@ -224,24 +226,51 @@ func _build_traits() -> void:
 
 func _build_inventory() -> void:
 	_inventory_panel = PanelContainer.new()
+	_inventory_panel.visible = false
 	_inventory_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	add_child(_inventory_panel)
+	_inventory_panel.add_child(UITheme.make_nine_patch())
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 2)
-	margin.add_theme_constant_override("margin_right", 2)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_bottom", 2)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
 	_inventory_panel.add_child(margin)
 
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	margin.add_child(box)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	box.add_child(header)
+
+	_inventory_title = Label.new()
+	_inventory_title.text = "ITEMS"
+	_inventory_title.add_theme_font_size_override("font_size", 9)
+	_inventory_title.add_theme_color_override("font_color", UITheme.TEXT_SECOND)
+	header.add_child(_inventory_title)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+
+	var craft_hint := Label.new()
+	craft_hint.text = "tap item > item / unit"
+	craft_hint.add_theme_font_size_override("font_size", 8)
+	craft_hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	header.add_child(craft_hint)
+
 	_inventory_row = HBoxContainer.new()
+	_inventory_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_inventory_row.add_theme_constant_override("separation", 6)
-	margin.add_child(_inventory_row)
+	box.add_child(_inventory_row)
 
 	for i in GameManager.MAX_INVENTORY_ITEMS:
 		var slot := Control.new()
-		slot.custom_minimum_size = Vector2(22, 22)
+		slot.custom_minimum_size = Vector2(34, 34)
 		_inventory_row.add_child(slot)
 
 		var bg := ColorRect.new()
@@ -255,10 +284,10 @@ func _build_inventory() -> void:
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		icon.offset_left = 2
-		icon.offset_top = 2
-		icon.offset_right = -2
-		icon.offset_bottom = -2
+		icon.offset_left = 4
+		icon.offset_top = 4
+		icon.offset_right = -4
+		icon.offset_bottom = -4
 		icon.modulate = Color(1, 1, 1, 0.0)
 		slot.add_child(icon)
 		_inventory_slots.append(icon)
@@ -322,6 +351,8 @@ func _build_inspect() -> void:
 	_inspect_panel = PanelContainer.new()
 	_inspect_panel.visible = false
 	_inspect_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_inspect_panel.z_as_relative = false
+	_inspect_panel.z_index = 240
 	add_child(_inspect_panel)
 	_inspect_panel.add_child(UITheme.make_nine_patch())
 
@@ -337,6 +368,7 @@ func _build_inspect() -> void:
 	_inspect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspect_label.add_theme_font_size_override("font_size", 11)
 	_inspect_label.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
+	_inspect_label.custom_minimum_size = Vector2(280, 120)
 	margin.add_child(_inspect_label)
 
 
@@ -344,6 +376,8 @@ func _build_loot() -> void:
 	_loot_panel = PanelContainer.new()
 	_loot_panel.visible = false
 	_loot_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_loot_panel.z_as_relative = false
+	_loot_panel.z_index = 235
 	add_child(_loot_panel)
 	_loot_panel.add_child(UITheme.make_nine_patch())
 
@@ -497,7 +531,10 @@ func _refresh_layout() -> void:
 	_top_panel.size = Vector2(width, UITheme.TOP_BAR_HEIGHT)
 
 	var board_top: float = top_y + UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
-	var board_bottom: float = view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.UI_STACK_GAP - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP
+	var shop_y: float = view_size.y - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT - UITheme.SHOP_PANEL_HEIGHT
+	var bench_y: float = shop_y - UITheme.UI_STACK_GAP - UITheme.BENCH_PANEL_HEIGHT
+	var item_y: float = bench_y - UITheme.UI_STACK_GAP - UITheme.ITEM_PANEL_HEIGHT
+	var board_bottom: float = item_y - UITheme.UI_STACK_GAP
 	var board_h: float = maxf(220.0, board_bottom - board_top)
 
 	var trait_height: float = 0.0
@@ -519,21 +556,21 @@ func _refresh_layout() -> void:
 	var inventory_size: int = GameManager.get_item_inventory().size()
 	_inventory_panel.visible = inventory_size > 0
 	if _inventory_panel.visible:
-		var inventory_w: float = clampf(8.0 + float(mini(inventory_size, 5)) * 16.0, 34.0, 88.0)
-		_inventory_panel.position = Vector2(left_x + 132.0, top_y + 3.0)
-		_inventory_panel.size = Vector2(inventory_w, 16)
+		var inventory_w: float = UITheme.item_rail_width(view_size)
+		_inventory_panel.position = Vector2(UITheme.item_rail_left(view_size), item_y)
+		_inventory_panel.size = Vector2(inventory_w, UITheme.ITEM_PANEL_HEIGHT)
 	else:
 		_inventory_panel.position = Vector2(-1000, -1000)
 		_inventory_panel.size = Vector2.ZERO
 
 	if _inspect_panel.visible:
-		_inspect_panel.position = Vector2(left_x + width - 236.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 104.0)
-		_inspect_panel.size = Vector2(216, 84)
+		_inspect_panel.position = Vector2(left_x + width - 324.0, item_y - 176.0)
+		_inspect_panel.size = Vector2(304, 168)
 	else:
 		_inspect_panel.position = Vector2(-1000, -1000)
 		_inspect_panel.size = Vector2.ZERO
 
-	_loot_panel.position = Vector2(left_x + width - 260.0, view_size.y - UITheme.SCREEN_GUTTER - UITheme.SHOP_PANEL_HEIGHT - UITheme.BENCH_PANEL_HEIGHT - 84.0)
+	_loot_panel.position = Vector2(left_x + width - 260.0, item_y - 96.0)
 	_loot_panel.size = Vector2(240, 74)
 
 	_overlay_panel.position = Vector2(left_x + (width - 360.0) * 0.5, top_y + 96.0)
@@ -552,25 +589,34 @@ func update_synergies(board_units: Array) -> void:
 	_trait_entries.clear()
 	_active_trait_count = 0
 
-	var counts: Dictionary = {}
+	var unique_counts: Dictionary = {}
 	for unit in board_units:
 		if unit == null:
 			continue
+		var unique_unit_id: String = str(unit.unit_id)
 		var race_id: String = str(unit.race)
 		var trait_id: String = str(unit.trait_id)
 		if race_id != "":
-			counts[race_id] = int(counts.get(race_id, 0)) + 1
+			if not unique_counts.has(race_id):
+				unique_counts[race_id] = {}
+			unique_counts[race_id][unique_unit_id] = true
 		if trait_id != "":
-			counts[trait_id] = int(counts.get(trait_id, 0)) + 1
+			if not unique_counts.has(trait_id):
+				unique_counts[trait_id] = {}
+			unique_counts[trait_id][unique_unit_id] = true
 
-	for trait_id in counts.keys():
+	for trait_id in unique_counts.keys():
+		var count: int = unique_counts[trait_id].size()
 		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.custom_minimum_size = Vector2(0, 14)
 		row.add_theme_constant_override("separation", 6)
 		_trait_list.add_child(row)
 
 		var badge := ColorRect.new()
 		badge.custom_minimum_size = Vector2(8, 8)
 		badge.color = UITheme.GOLD
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(badge)
 
 		var name_lbl := Label.new()
@@ -578,19 +624,23 @@ func update_synergies(board_units: Array) -> void:
 		name_lbl.text = str(trait_data.get("name", trait_id.capitalize()))
 		name_lbl.add_theme_font_size_override("font_size", 10)
 		name_lbl.add_theme_color_override("font_color", UITheme.TEXT_PRIMARY)
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(name_lbl)
 
 		var spacer := Control.new()
 		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(spacer)
 
 		var count_lbl := Label.new()
-		count_lbl.text = str(counts[trait_id])
+		count_lbl.text = str(count)
 		count_lbl.add_theme_font_size_override("font_size", 10)
 		count_lbl.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
+		count_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(count_lbl)
 
 		row.mouse_entered.connect(_on_trait_hovered.bind(DataManager.get_trait_tooltip(trait_id)))
+		row.mouse_exited.connect(_on_hover_exit)
 		_active_trait_count += 1
 
 	_refresh_layout()
@@ -706,9 +756,10 @@ func _on_inventory_changed(items: Array[String]) -> void:
 		var icon: TextureRect = _inventory_slots[i]
 		var bg: ColorRect = _inventory_slot_bgs[i]
 		if i < items.size():
-			icon.texture = DataManager.get_item_icon(items[i])
+			var item_id: String = items[i]
+			icon.texture = DataManager.get_item_icon(item_id)
 			icon.modulate = Color.WHITE
-			bg.color = Color(UITheme.BG_CARD.r, UITheme.BG_CARD.g, UITheme.BG_CARD.b, 0.85)
+			bg.color = _item_slot_color(item_id)
 		else:
 			icon.texture = ITEM_TEXTURE
 			icon.modulate = Color(1, 1, 1, 0.0)
@@ -727,6 +778,8 @@ func _bind_scene_peers() -> void:
 	_shop_ui = root.get_node_or_null("ShopUI")
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
+	if root.has_signal("prep_timer_updated") and not root.prep_timer_updated.is_connected(_on_prep_timer_updated):
+		root.prep_timer_updated.connect(_on_prep_timer_updated)
 	if root.has_signal("round_context_changed") and not root.round_context_changed.is_connected(_on_round_context_changed):
 		root.round_context_changed.connect(_on_round_context_changed)
 	if _board_ui != null:
@@ -758,14 +811,25 @@ func _on_phase_changed(phase: int) -> void:
 	_refresh_phase_label()
 	if phase != PREP_PHASE:
 		_selected_item_index = -1
+		_prep_timer_seconds = 0.0
 		refresh_inventory_selection()
 	_refresh_help_text()
+
+
+func _on_prep_timer_updated(seconds_left: float) -> void:
+	_prep_timer_seconds = seconds_left
+	_refresh_phase_label()
 
 
 func _refresh_phase_label() -> void:
 	if _phase_label == null:
 		return
-	_phase_label.text = "Prep" if _phase == PREP_PHASE else ("Fight" if _phase == COMBAT_PHASE else "End")
+	if _phase == PREP_PHASE:
+		_phase_label.text = "Prep %ds" % int(ceil(_prep_timer_seconds))
+	elif _phase == COMBAT_PHASE:
+		_phase_label.text = "Fight"
+	else:
+		_phase_label.text = "End"
 
 
 func _refresh_overview() -> void:
@@ -906,6 +970,9 @@ func _show_unit_inspect(unit) -> void:
 func show_inspect_text(text: String) -> void:
 	_inspect_label.text = text
 	_inspect_panel.visible = text.strip_edges() != ""
+	if _inspect_panel.visible:
+		_inspect_panel.move_to_front()
+		_refresh_layout()
 
 
 func hide_inspect() -> void:
@@ -1008,10 +1075,19 @@ func _make_unit_chip(unit_id: String) -> Control:
 
 
 func _item_tooltip(item_id: String) -> String:
-	var data: Dictionary = DataManager.get_item(item_id)
-	if data.is_empty():
-		return item_id
-	return "%s\n%s" % [str(data.get("name", item_id)), str(data.get("description", ""))]
+	return DataManager.get_item_tooltip(item_id)
+
+
+func _item_slot_color(item_id: String) -> Color:
+	var item: Dictionary = DataManager.get_item(item_id)
+	var category: String = str(item.get("category", ""))
+	match category:
+		"crafted":
+			return Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.28)
+		"legacy":
+			return Color(UITheme.TEAL.r, UITheme.TEAL.g, UITheme.TEAL.b, 0.22)
+		_:
+			return Color(UITheme.BORDER_MID.r, UITheme.BORDER_MID.g, UITheme.BORDER_MID.b, 0.26)
 
 
 func is_item_targeting_active() -> bool:
@@ -1021,7 +1097,13 @@ func is_item_targeting_active() -> bool:
 func refresh_inventory_selection() -> void:
 	for i in _inventory_slot_bgs.size():
 		var bg: ColorRect = _inventory_slot_bgs[i]
-		bg.color = Color(UITheme.GOLD_BRIGHT.r, UITheme.GOLD_BRIGHT.g, UITheme.GOLD_BRIGHT.b, 0.65) if i == _selected_item_index else Color(UITheme.BG_CARD.r, UITheme.BG_CARD.g, UITheme.BG_CARD.b, 0.55)
+		var items: Array[String] = GameManager.get_item_inventory()
+		if i == _selected_item_index:
+			bg.color = Color(UITheme.GOLD_BRIGHT.r, UITheme.GOLD_BRIGHT.g, UITheme.GOLD_BRIGHT.b, 0.65)
+		elif i < items.size():
+			bg.color = _item_slot_color(items[i])
+		else:
+			bg.color = Color(UITheme.BG_CARD.r, UITheme.BG_CARD.g, UITheme.BG_CARD.b, 0.55)
 
 
 func _refresh_help_text() -> void:

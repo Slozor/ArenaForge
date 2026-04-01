@@ -187,7 +187,7 @@ func _refresh_layout() -> void:
 	var width: float = UITheme.rail_width(view_size)
 	var left_x: float = UITheme.rail_left(view_size)
 	var bench_h: float = UITheme.BENCH_PANEL_HEIGHT
-	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
+	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT
 	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP
 	position = Vector2(left_x, bench_y)
 	size = Vector2(width, bench_h)
@@ -419,7 +419,7 @@ func _refresh_slot(index: int) -> void:
 	portrait.modulate = Color.WHITE
 	star_lbl.text = "★".repeat(unit.star_level - 1) if unit.star_level > 1 else ""
 	border.color = Color(0, 0, 0, 0)
-	slot.tooltip_text = DataManager.get_unit_tooltip(unit.unit_id)
+	slot.tooltip_text = ""
 
 
 func _set_slot_selected(index: int, selected: bool) -> void:

@@ -25,7 +25,7 @@ const CELL_SIZE: float = 96.0
 const BOARD_OFFSET: Vector2 = Vector2(304.0, 55.0)  # centered in 1280x720, below HUD (50px)
 const PREP_PHASE: int = 0
 const COMBAT_PHASE: int = 1
-const HEX_RADIUS_RATIO: float = 0.43
+const HEX_RADIUS_RATIO: float = 0.35
 
 enum InputState { IDLE, UNIT_SELECTED }
 
@@ -74,6 +74,8 @@ func _build_tooltip() -> void:
 	_tooltip_panel = PanelContainer.new()
 	_tooltip_panel.visible = false
 	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tooltip_panel.z_as_relative = false
+	_tooltip_panel.z_index = 500
 	add_child(_tooltip_panel)
 
 	var margin := MarginContainer.new()
@@ -286,9 +288,12 @@ func _update_tooltip(pointer_pos: Vector2) -> void:
 	var view_size: Vector2 = get_viewport_rect().size
 	_tooltip_panel.position = tooltip_pos
 	var panel_size: Vector2 = _tooltip_panel.get_combined_minimum_size()
+	var bench_top: float = view_size.y - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT - UITheme.SHOP_PANEL_HEIGHT - UITheme.UI_STACK_GAP - UITheme.BENCH_PANEL_HEIGHT
 	if tooltip_pos.x + panel_size.x > view_size.x - 8.0:
 		_tooltip_panel.position.x = view_size.x - panel_size.x - 8.0
-	if tooltip_pos.y + panel_size.y > view_size.y - 8.0:
+	if tooltip_pos.y + panel_size.y > bench_top - 8.0:
+		_tooltip_panel.position.y = maxf(8.0, pointer_pos.y - panel_size.y - 20.0)
+	elif tooltip_pos.y + panel_size.y > view_size.y - 8.0:
 		_tooltip_panel.position.y = tooltip_pos.y - panel_size.y - 24.0
 
 
@@ -645,7 +650,7 @@ func _refresh_layout() -> void:
 	var side_pad: float = clampf(content_w * 0.004, 2.0, 8.0)
 	var side_column: float = clampf(content_w * 0.032, 18.0, 40.0)
 	var top_margin: float = UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
-	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.SCREEN_GUTTER
+	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT
 	var bench_y: float = shop_y - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP
 	var bottom_limit: float = bench_y - UITheme.UI_STACK_GAP - 6.0
 	_play_rect = Rect2(Vector2(content_x, top_margin), Vector2(content_w, maxf(200.0, bottom_limit - top_margin)))
@@ -653,7 +658,7 @@ func _refresh_layout() -> void:
 	var right_margin: float = side_column + side_pad
 	var usable_w: float = maxf(280.0, _play_rect.size.x - left_margin - right_margin)
 	var usable_h: float = maxf(220.0, _play_rect.size.y - 2.0)
-	_cell_size = round(clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 72.0, 168.0))
+	_cell_size = round(clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 68.0, 152.0))
 	var board_w: float = float(COLS) * _cell_size
 	var board_h: float = float(ROWS) * _cell_size
 	_board_offset = Vector2(

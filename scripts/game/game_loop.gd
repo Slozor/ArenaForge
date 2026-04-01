@@ -77,6 +77,8 @@ func _ready() -> void:
 	start_round(false)
 
 	if hud_ui != null:
+		if not hud_ui.skip_prep_pressed.is_connected(skip_prep):
+			hud_ui.skip_prep_pressed.connect(skip_prep)
 		hud_ui.restart_requested.connect(_restart_run)
 		hud_ui.menu_requested.connect(_return_to_menu)
 		if hud_ui.has_signal("selection_chosen"):
@@ -87,12 +89,14 @@ func start_round(grant_income: bool = true) -> void:
 	_pending_late_game_reward = false
 	if grant_income:
 		_grant_round_income()
+	_reset_player_units_for_preparation()
 	_sync_round_context()
 	ShopManager.refresh_shop()
 	_enter_preparation()
 
 
 func _enter_preparation() -> void:
+	_reset_player_units_for_preparation()
 	current_phase = Phase.PREPARATION
 	prep_timer = PREP_TIME
 	phase_changed.emit(Phase.PREPARATION)
@@ -143,6 +147,7 @@ func on_combat_ended(player_won: bool) -> void:
 	if current_phase != Phase.COMBAT:
 		return
 	_restore_player_prep_positions()
+	_reset_player_units_for_preparation()
 	current_phase = Phase.RESULT
 	phase_changed.emit(Phase.RESULT)
 
@@ -209,6 +214,7 @@ func _grant_round_income() -> void:
 
 func _resolve_special_round() -> void:
 	_restore_player_prep_positions()
+	_reset_player_units_for_preparation()
 	current_phase = Phase.RESULT
 	phase_changed.emit(Phase.RESULT)
 	GameManager.record_special_round_cleared()
@@ -389,9 +395,7 @@ func _apply_augments_to_board(units: Array) -> void:
 
 
 func _calculate_loss_damage() -> int:
-	if current_round_kind == "creep":
-		return 0
-	var stage_base: int = 2
+	var stage_base: int = 1 if current_round_kind == "creep" else 2
 	if GameManager.current_round >= 14:
 		stage_base = 5
 	elif GameManager.current_round >= 11:
@@ -1019,6 +1023,25 @@ func _restore_player_prep_positions() -> void:
 	_player_prep_positions.clear()
 
 
+func _reset_player_units_for_preparation() -> void:
+	if board_ui == null:
+		return
+	for unit in _get_player_units():
+		if unit == null:
+			continue
+		var instance_id: int = unit.get_instance_id()
+		if _player_prep_positions.has(instance_id):
+			unit.board_position = _player_prep_positions[instance_id]
+		elif unit.board_position.y >= 4:
+			unit.board_position = Vector2i(unit.board_position.x, unit.board_position.y - 4)
+		unit.is_enemy_unit = false
+		unit.visible = true
+		unit.reset_combat_state()
+		unit.position = board_ui.cell_to_world(unit.board_position.x, unit.board_position.y)
+	if board_ui.has_method("refresh_all_unit_positions"):
+		board_ui.refresh_all_unit_positions()
+
+
 func _prepare_player_units_for_combat() -> void:
 	for unit in _get_player_units():
 		unit.is_enemy_unit = false
@@ -1037,3 +1060,4 @@ func _on_combat_unit_moved(unit, to: Vector2i) -> void:
 	if board_ui == null or unit == null:
 		return
 	unit.position = board_ui.combat_cell_to_world(to.x, to.y)
+	unit.queue_redraw()

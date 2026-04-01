@@ -189,14 +189,14 @@ func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
 	var width: float = UITheme.rail_width(view_size)
 	var left_x: float = UITheme.rail_left(view_size)
-	position = Vector2(left_x, view_size.y - SHOP_HEIGHT - UITheme.SCREEN_GUTTER)
+	position = Vector2(left_x, view_size.y - SHOP_HEIGHT - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT)
 	size = Vector2(width, SHOP_HEIGHT)
 
 	var compact: bool = width < 860.0
 	var large: bool = width >= 980.0
-	var card_w: float = 64.0 if compact else (74.0 if large else 68.0)
-	var card_h: float = 74.0 if compact else (86.0 if large else 80.0)
-	_buttons_col.custom_minimum_size = Vector2(62.0 if compact else 68.0, 0.0)
+	var card_w: float = 58.0 if compact else (68.0 if large else 62.0)
+	var card_h: float = 66.0 if compact else (78.0 if large else 72.0)
+	_buttons_col.custom_minimum_size = Vector2(58.0 if compact else 64.0, 0.0)
 	_cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	for card in _cards:
 		if card.has_method("set_card_metrics"):
