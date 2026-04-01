@@ -9,6 +9,8 @@ var opponents: Dictionary = {}   # opponent_id -> opponent profile dict
 var opponent_order: Array[String] = []
 var augments: Dictionary = {}    # augment_id -> augment data dict
 var encounters: Dictionary = {}  # encounter_id -> encounter data dict
+var _texture_cache: Dictionary = {}
+var _unit_tooltip_cache: Dictionary = {}
 var _tiny_dungeon_portraits: Dictionary = {
 	"iron_guard": "res://assets/kenney_tiny_dungeon/Tiles/tile_0087.png",
 	"watchman": "res://assets/kenney_tiny_dungeon/Tiles/tile_0085.png",
@@ -245,8 +247,8 @@ func get_item_icon(item_id: String) -> Texture2D:
 	var category: String = str(item.get("category", "component"))
 	var path: String = "res://assets/items/icon_%s.svg" % category
 	if FileAccess.file_exists(path):
-		return load(path) as Texture2D
-	return load("res://assets/items/placeholder_item.svg") as Texture2D
+		return _load_texture_cached(path)
+	return _load_texture_cached("res://assets/items/placeholder_item.svg")
 
 
 func get_all_item_ids() -> Array:
@@ -430,7 +432,17 @@ func get_unit_portrait_path(unit_id: String) -> String:
 
 func get_unit_portrait(unit_id: String) -> Texture2D:
 	var path: String = get_unit_portrait_path(unit_id)
-	return load(path) as Texture2D
+	return _load_texture_cached(path)
+
+
+func _load_texture_cached(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if _texture_cache.has(path):
+		return _texture_cache[path] as Texture2D
+	var texture: Texture2D = load(path) as Texture2D
+	_texture_cache[path] = texture
+	return texture
 
 
 func get_unit_role(unit_id: String) -> String:
@@ -578,6 +590,8 @@ func get_all_round_numbers() -> Array:
 
 
 func get_unit_tooltip(unit_id: String) -> String:
+	if _unit_tooltip_cache.has(unit_id):
+		return str(_unit_tooltip_cache[unit_id])
 	var unit_data: Dictionary = get_unit(unit_id)
 	if unit_data.is_empty():
 		return unit_id
@@ -610,7 +624,9 @@ func get_unit_tooltip(unit_id: String) -> String:
 			float(ability.get("cast_time", 0.0))
 		])
 		lines.append(str(ability.get("description", "")))
-	return "\n".join(lines)
+	var tooltip: String = "\n".join(lines)
+	_unit_tooltip_cache[unit_id] = tooltip
+	return tooltip
 
 
 func get_unit_ability(unit_id: String) -> Dictionary:

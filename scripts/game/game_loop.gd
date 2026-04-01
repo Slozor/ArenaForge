@@ -111,11 +111,11 @@ func _enter_combat() -> void:
 		hud_ui.set_skip_button_visible(false)
 	_store_player_prep_positions()
 	_prepare_player_units_for_combat()
-	_apply_synergies_to_board()
 	_spawn_enemy_team()
 	_position_units_for_combat(_get_player_units())
 	_position_units_for_combat(enemy_units)
 	combat_controller.start(_get_player_units(), enemy_units, {"enemy": _build_combat_modifiers(current_opponent_profile)})
+	_apply_synergies_to_board()
 
 
 func _process(delta: float) -> void:
