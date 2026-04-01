@@ -1,4 +1,5 @@
 extends Node2D
+class_name Unit
 const STATE_IDLE: int = 0
 const STATE_MOVING: int = 1
 const STATE_ATTACKING: int = 2
@@ -191,12 +192,14 @@ func finish_cast() -> void:
 func take_damage(raw_amount: int, ignore_armor: bool = false) -> bool:
 	if state == STATE_DEAD:
 		return false
+	if raw_amount <= 0:
+		return false
 
 	var reduced: int = raw_amount
 	if not ignore_armor:
 		reduced = _apply_armor_reduction(raw_amount)
 
-	current_health -= max(0, reduced)
+	current_health -= reduced
 	play_damage_flash()
 	health_changed.emit(current_health, get_max_health())
 	if current_health <= 0:

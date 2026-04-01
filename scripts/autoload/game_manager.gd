@@ -368,6 +368,13 @@ func take_damage(amount: int) -> void:
 		change_state(GameState.GAME_OVER)
 
 
+func heal_player(amount: int) -> void:
+	if amount <= 0:
+		return
+	player_health = mini(100, player_health + amount)
+	health_changed.emit(player_health)
+
+
 func start_new_game() -> void:
 	player_gold = 5
 	player_health = 100
@@ -422,7 +429,7 @@ func _select_reward_target(units: Array):
 	var best = null
 	var best_score: int = -1
 	for unit in units:
-		if unit == null or int(unit.state) == 3:
+		if unit == null or int(unit.state) == Unit.STATE_DEAD:
 			continue
 		if not unit.can_equip_more_items():
 			continue

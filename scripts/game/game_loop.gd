@@ -151,8 +151,7 @@ func on_combat_ended(player_won: bool) -> void:
 		win_streak += 1
 		loss_streak = 0
 		if GameManager.has_encounter("second_wind"):
-			GameManager.player_health = mini(100, GameManager.player_health + 2)
-			GameManager.health_changed.emit(GameManager.player_health)
+			GameManager.heal_player(2)
 	else:
 		GameManager.record_round_loss()
 		loss_streak += 1
@@ -424,7 +423,7 @@ func _get_player_units() -> Array:
 
 
 func _count_alive_units(units: Array) -> int:
-	return units.filter(func(unit): return int(unit.state) != 3).size()
+	return units.filter(func(unit): return int(unit.state) != Unit.STATE_DEAD).size()
 
 
 func _refresh_board_state() -> void:
