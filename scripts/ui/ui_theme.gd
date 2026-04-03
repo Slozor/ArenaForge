@@ -59,16 +59,16 @@ const BOARD_BORDER      := Color(0.20, 0.30, 0.45, 0.85)
 
 # ── Layout rhythm (base 1280x720 viewport) ──────────────────────────────────
 const TOP_BAR_HEIGHT := 40.0
-const SHOP_PANEL_HEIGHT := 60.0
-const BENCH_PANEL_HEIGHT := 72.0
+const SHOP_PANEL_HEIGHT := 96.0
+const BENCH_PANEL_HEIGHT := 76.0
 const ITEM_PANEL_HEIGHT := 44.0
 const UI_STACK_GAP := 12.0
-const SCREEN_GUTTER := 16.0
+const SCREEN_GUTTER := 28.0
 const BOTTOM_GUTTER := 18.0
-const LOWER_RAIL_LIFT := 104.0
+const LOWER_RAIL_LIFT := 8.0
 const CONTENT_MAX_WIDTH := 1728.0
-const RAIL_MAX_WIDTH := 780.0
-const ITEM_RAIL_MAX_WIDTH := 520.0
+const RAIL_MAX_WIDTH := 740.0
+const ITEM_RAIL_MAX_WIDTH := 360.0
 
 
 static func content_width(view_size: Vector2) -> float:
@@ -96,6 +96,58 @@ static func item_rail_width(view_size: Vector2) -> float:
 static func item_rail_left(view_size: Vector2) -> float:
 	var width: float = item_rail_width(view_size)
 	return round((view_size.x - width) * 0.5)
+
+
+static func top_bar_y(_view_size: Vector2) -> float:
+	return SCREEN_GUTTER
+
+
+static func board_top_y(view_size: Vector2) -> float:
+	return top_bar_y(view_size) + TOP_BAR_HEIGHT + UI_STACK_GAP
+
+
+static func shop_y(view_size: Vector2) -> float:
+	return view_size.y - SHOP_PANEL_HEIGHT - BOTTOM_GUTTER - LOWER_RAIL_LIFT
+
+
+static func bench_y(view_size: Vector2) -> float:
+	return shop_y(view_size) - BENCH_PANEL_HEIGHT - UI_STACK_GAP
+
+
+static func item_y(view_size: Vector2) -> float:
+	return bench_y(view_size) - ITEM_PANEL_HEIGHT - UI_STACK_GAP
+
+
+static func board_bottom_y(view_size: Vector2) -> float:
+	return item_y(view_size) - UI_STACK_GAP
+
+
+static func is_compact(view_size: Vector2) -> bool:
+	return view_size.x <= 1280.0 or view_size.y <= 720.0
+
+
+static func side_panel_width(view_size: Vector2) -> float:
+	return 96.0 if is_compact(view_size) else 128.0
+
+
+static func opponent_panel_size(view_size: Vector2) -> Vector2:
+	return Vector2(102.0, 74.0) if is_compact(view_size) else Vector2(114.0, 80.0)
+
+
+static func inspect_panel_size(view_size: Vector2) -> Vector2:
+	return Vector2(236.0, 144.0) if is_compact(view_size) else Vector2(304.0, 168.0)
+
+
+static func loot_panel_size(view_size: Vector2) -> Vector2:
+	return Vector2(188.0, 66.0) if is_compact(view_size) else Vector2(240.0, 74.0)
+
+
+static func play_rect(view_size: Vector2) -> Rect2:
+	var width: float = content_width(view_size)
+	var left_x: float = content_left(view_size)
+	var top_y: float = board_top_y(view_size)
+	var bottom_y: float = board_bottom_y(view_size)
+	return Rect2(Vector2(left_x, top_y), Vector2(width, maxf(220.0, bottom_y - top_y)))
 
 
 # ── Helper: build a StyleBoxFlat ──────────────────────────────────────────────

@@ -44,10 +44,10 @@ signal round_context_changed(round_data: Dictionary, opponent_profile: Dictionar
 
 func _ready() -> void:
 	_loot_rng.randomize()
-	board_ui = get_node_or_null("BoardUI")
-	bench_ui = get_node_or_null("BenchUI")
-	hud_ui = get_node_or_null("HudUI")
-	shop_ui = get_node_or_null("ShopUI")
+	board_ui = find_child("BoardUI", true, false)
+	bench_ui = find_child("BenchUI", true, false)
+	hud_ui = find_child("HudUI", true, false)
+	shop_ui = find_child("ShopUI", true, false)
 
 	combat_controller = CombatController.new()
 	combat_controller.name = "CombatController"
@@ -238,6 +238,18 @@ func _resolve_special_round() -> void:
 	_grant_round_reward()
 	combat_finished.emit(true)
 	_advance_round_or_finish("special")
+
+
+func _resolve_empty_special_choice(reason: String) -> void:
+	_grant_round_reward()
+	combat_finished.emit(true)
+	_advance_round_or_finish(reason)
+
+
+func _resolve_empty_late_game_choice(reason: String) -> void:
+	_pending_late_game_reward = false
+	_grant_round_reward()
+	_advance_round_or_finish(reason)
 
 
 func _grant_round_reward() -> void:
@@ -635,8 +647,13 @@ func _offer_loot_choice(reward: Dictionary) -> void:
 			"gold": reward_gold,
 			"follow_up_augment": bool(reward.get("augment_choice", false))
 		}
+	if options.is_empty():
+		_resolve_empty_special_choice("loot_fallback")
+		return
 	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
 		hud_ui.show_reward_choices("Choose Your Loot", options)
+	else:
+		_on_selection_chosen("loot_reward", str(options[0].get("id", "")))
 
 
 func _offer_armory_choice(reward: Dictionary) -> void:
@@ -663,8 +680,13 @@ func _offer_armory_choice(reward: Dictionary) -> void:
 			"name": str(payload.get("title", "Armory Choice")),
 			"description": _format_reward_choice_description(item_ids, int(payload.get("gold", 0)))
 		})
+	if options.is_empty():
+		_resolve_empty_special_choice("armory_fallback")
+		return
 	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
 		hud_ui.show_reward_choices("Choose an Armory Reward", options)
+	else:
+		_on_selection_chosen("loot_reward", str(options[0].get("id", "")))
 
 
 func _offer_late_game_choice(reward: Dictionary) -> void:
@@ -723,13 +745,18 @@ func _offer_late_game_choice(reward: Dictionary) -> void:
 			"description": _format_reward_choice_description(item_ids, int(payload.get("gold", 0)))
 		})
 		_pending_reward_choices[choice_id] = payload
+	if options.is_empty():
+		_resolve_empty_late_game_choice("late_reward_fallback")
+		return
+	var title: String = "Choose Your Spoils"
+	if current_round_kind == "boss":
+		title = "Boss Spoils"
+	elif current_round_kind == "elite":
+		title = "Elite Spoils"
 	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
-		var title: String = "Choose Your Spoils"
-		if current_round_kind == "boss":
-			title = "Boss Spoils"
-		elif current_round_kind == "elite":
-			title = "Elite Spoils"
 		hud_ui.show_reward_choices(title, options)
+	else:
+		_on_selection_chosen("loot_reward", str(options[0].get("id", "")))
 
 
 func _offer_draft_choice(reward: Dictionary) -> void:
@@ -772,8 +799,13 @@ func _offer_draft_choice(reward: Dictionary) -> void:
 			"gold": int(reward.get("gold", 0)),
 			"follow_up_augment": bool(reward.get("augment_choice", false))
 		}
+	if options.is_empty():
+		_resolve_empty_special_choice("draft_fallback")
+		return
 	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
 		hud_ui.show_reward_choices("Choose a Draft Reward", options)
+	else:
+		_on_selection_chosen("draft_reward", str(options[0].get("id", "")))
 
 
 func _offer_unit_draft_choice(reward: Dictionary) -> void:
@@ -800,8 +832,13 @@ func _offer_unit_draft_choice(reward: Dictionary) -> void:
 			"gold": int(reward.get("gold", 0)),
 			"follow_up_augment": bool(reward.get("augment_choice", false))
 		}
+	if options.is_empty():
+		_resolve_empty_special_choice("recruit_fallback")
+		return
 	if hud_ui != null and hud_ui.has_method("show_reward_choices"):
 		hud_ui.show_reward_choices("Choose a Recruit", options)
+	else:
+		_on_selection_chosen("draft_reward", str(options[0].get("id", "")))
 
 
 func _build_armory_payload(mode: String, excluded_items: Array[String], role: String = "utility") -> Dictionary:

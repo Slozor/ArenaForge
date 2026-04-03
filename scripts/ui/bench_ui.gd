@@ -32,6 +32,8 @@ var _slots_row: HBoxContainer = null
 var _title_label: Label = null
 var _count_label: Label = null
 var _hint_label: Label = null
+var _layout_refreshing: bool = false
+var _layout_refresh_pending: bool = false
 
 signal unit_selected_from_bench(unit)
 signal unit_sold(unit)
@@ -59,10 +61,22 @@ func _ready() -> void:
 	_build_ui()
 	_bind_scene_peers()
 	_refresh_overview()
-	if not resized.is_connected(_refresh_layout):
-		resized.connect(_refresh_layout)
+	if not resized.is_connected(_queue_refresh_layout):
+		resized.connect(_queue_refresh_layout)
 	_refresh_layout()
 	call_deferred("move_to_front")
+
+
+func _queue_refresh_layout() -> void:
+	if _layout_refresh_pending:
+		return
+	_layout_refresh_pending = true
+	call_deferred("_run_queued_refresh_layout")
+
+
+func _run_queued_refresh_layout() -> void:
+	_layout_refresh_pending = false
+	_refresh_layout()
 
 
 func _build_ui() -> void:
@@ -183,15 +197,15 @@ func _make_slot(index: int) -> Control:
 
 
 func _refresh_layout() -> void:
-	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = UITheme.rail_width(view_size)
-	var left_x: float = UITheme.rail_left(view_size)
-	var bench_h: float = UITheme.BENCH_PANEL_HEIGHT
-	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT
-	var bench_y: float = shop_y - bench_h - UITheme.UI_STACK_GAP
-	position = Vector2(left_x, bench_y)
-	size = Vector2(width, bench_h)
+	if _layout_refreshing:
+		return
+	_layout_refreshing = true
+	position = Vector2.ZERO
+	size = get_parent_area_size()
+	if size.x <= 0.0 or size.y <= 0.0:
+		size = get_viewport_rect().size
 
+	var width: float = size.x
 	var compact: bool = width < 920.0
 	var large: bool = width >= 1000.0
 	var available_w: float = width - 24.0
@@ -209,6 +223,7 @@ func _refresh_layout() -> void:
 			portrait.offset_top = inset
 			portrait.offset_right = -inset
 			portrait.offset_bottom = -inset
+	_layout_refreshing = false
 
 
 func set_hint_text(text: String) -> void:
@@ -526,11 +541,11 @@ func _get_merge_candidates(unit_id: String, star_level: int) -> Array:
 
 
 func _bind_scene_peers() -> void:
-	var root := get_parent()
+	var root := get_tree().current_scene
 	if root == null:
 		return
-	_board_ui = root.get_node_or_null("BoardUI")
-	_shop_ui = root.get_node_or_null("ShopUI")
+	_board_ui = root.find_child("BoardUI", true, false)
+	_shop_ui = root.find_child("ShopUI", true, false)
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
 	if _board_ui != null:

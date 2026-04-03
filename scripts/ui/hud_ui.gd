@@ -69,6 +69,8 @@ var _active_trait_count: int = 0
 var _default_inspect_text: String = ""
 var _announce_token: int = 0
 var _prep_timer_seconds: float = 0.0
+var _layout_refreshing: bool = false
+var _layout_refresh_pending: bool = false
 
 signal skip_prep_pressed()
 signal restart_requested()
@@ -99,9 +101,21 @@ func _ready() -> void:
 	GameManager.encounter_changed.connect(_on_encounter_changed)
 	GameManager.run_finished.connect(_on_run_finished)
 	if not resized.is_connected(_refresh_layout):
-		resized.connect(_refresh_layout)
-	_refresh_layout()
+		resized.connect(_queue_refresh_layout)
+	_queue_refresh_layout()
 	_refresh_overview()
+
+
+func _queue_refresh_layout() -> void:
+	if _layout_refresh_pending:
+		return
+	_layout_refresh_pending = true
+	call_deferred("_run_queued_refresh_layout")
+
+
+func _run_queued_refresh_layout() -> void:
+	_layout_refresh_pending = false
+	_refresh_layout()
 
 
 func _build_ui() -> void:
@@ -258,7 +272,7 @@ func _build_inventory() -> void:
 	header.add_child(spacer)
 
 	var craft_hint := Label.new()
-	craft_hint.text = "tap item > item / unit"
+	craft_hint.text = "tap item > item/unit"
 	craft_hint.add_theme_font_size_override("font_size", 8)
 	craft_hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	header.add_child(craft_hint)
@@ -520,58 +534,90 @@ func _build_augment_panel() -> void:
 		_augment_buttons.append(button)
 
 
+func _host_rect(host_name: String) -> Rect2:
+	var root := get_tree().current_scene
+	if root == null:
+		return Rect2()
+	var host = root.find_child(host_name, true, false)
+	if host is Control:
+		var control_host: Control = host
+		return Rect2(control_host.global_position - global_position, control_host.size)
+	return Rect2()
+
+
 func _refresh_layout() -> void:
+	if _layout_refreshing:
+		return
+	_layout_refreshing = true
 	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = UITheme.content_width(view_size)
-	var left_x: float = UITheme.content_left(view_size)
-	var top_y: float = UITheme.SCREEN_GUTTER
+	var top_rect: Rect2 = _host_rect("TopBarHost")
+	var play: Rect2 = _host_rect("PlayAreaHost")
+	var trait_host: Rect2 = _host_rect("TraitHost")
+	var opponent_host: Rect2 = _host_rect("OpponentHost")
+	var item_host: Rect2 = _host_rect("ItemHost")
+	if top_rect.size == Vector2.ZERO:
+		top_rect = Rect2(Vector2(UITheme.content_left(view_size), UITheme.top_bar_y(view_size)), Vector2(UITheme.content_width(view_size), UITheme.TOP_BAR_HEIGHT))
+	if play.size == Vector2.ZERO:
+		play = UITheme.play_rect(view_size)
+	if trait_host.size == Vector2.ZERO:
+		trait_host = Rect2(Vector2(play.position.x, play.position.y), Vector2(UITheme.side_panel_width(view_size), play.size.y))
+	if opponent_host.size == Vector2.ZERO:
+		opponent_host = Rect2(Vector2(play.end.x - UITheme.side_panel_width(view_size), play.position.y), Vector2(UITheme.side_panel_width(view_size), play.size.y))
+	if item_host.size == Vector2.ZERO:
+		item_host = Rect2(Vector2(UITheme.item_rail_left(view_size), UITheme.item_y(view_size)), Vector2(UITheme.item_rail_width(view_size), UITheme.ITEM_PANEL_HEIGHT))
+	var width: float = top_rect.size.x
+	var left_x: float = top_rect.position.x
+	var top_y: float = top_rect.position.y
+	var compact: bool = UITheme.is_compact(view_size)
 	size = view_size
 
-	_top_panel.position = Vector2(left_x, top_y)
-	_top_panel.size = Vector2(width, UITheme.TOP_BAR_HEIGHT)
+	_top_panel.position = top_rect.position
+	_top_panel.size = top_rect.size
 
-	var board_top: float = top_y + UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
-	var shop_y: float = view_size.y - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT - UITheme.SHOP_PANEL_HEIGHT
-	var bench_y: float = shop_y - UITheme.UI_STACK_GAP - UITheme.BENCH_PANEL_HEIGHT
-	var item_y: float = bench_y - UITheme.UI_STACK_GAP - UITheme.ITEM_PANEL_HEIGHT
-	var board_bottom: float = item_y - UITheme.UI_STACK_GAP
-	var board_h: float = maxf(220.0, board_bottom - board_top)
+	var item_y: float = item_host.position.y
+	var board_h: float = play.size.y
 
 	var trait_height: float = 0.0
 	var trait_width: float = 0.0
 	if _trait_list != null:
-		trait_height = clampf(_trait_list.get_combined_minimum_size().y + 12.0, 28.0, minf(84.0, board_h - 20.0))
-		trait_width = clampf(_trait_list.get_combined_minimum_size().x + 14.0, 44.0, 64.0)
-	_trait_panel.visible = _active_trait_count > 0 and _trait_list.get_child_count() > 0
+		var trait_min: Vector2 = _trait_list.get_combined_minimum_size()
+		trait_height = clampf(trait_min.y + 16.0, 30.0, minf(128.0, board_h - 20.0))
+		trait_width = clampf(trait_min.x + 18.0, 72.0, 132.0)
+	_trait_panel.visible = _active_trait_count > 0 and _trait_list != null and _trait_list.get_child_count() > 0
 	if _trait_panel.visible:
-		_trait_panel.position = Vector2(left_x, board_top + 8.0)
-		_trait_panel.size = Vector2(trait_width, trait_height)
+		_trait_panel.position = Vector2(trait_host.position.x, trait_host.position.y + 8.0)
+		_trait_panel.size = Vector2(minf(trait_width, trait_host.size.x), trait_height)
 	else:
 		_trait_panel.position = Vector2(-1000, -1000)
 		_trait_panel.size = Vector2.ZERO
 
-	_opponent_panel.position = Vector2(left_x + width - 138.0, board_top + 44.0)
-	_opponent_panel.size = Vector2(122, 84)
+	var opponent_size: Vector2 = UITheme.opponent_panel_size(view_size)
+	var opponent_w: float = opponent_size.x
+	_opponent_panel.position = Vector2(opponent_host.position.x + maxf(0.0, opponent_host.size.x - opponent_w), opponent_host.position.y + 44.0)
+	_opponent_panel.size = opponent_size
 
 	var inventory_size: int = GameManager.get_item_inventory().size()
 	_inventory_panel.visible = inventory_size > 0
 	if _inventory_panel.visible:
-		var inventory_w: float = UITheme.item_rail_width(view_size)
-		_inventory_panel.position = Vector2(UITheme.item_rail_left(view_size), item_y)
-		_inventory_panel.size = Vector2(inventory_w, UITheme.ITEM_PANEL_HEIGHT)
+		_inventory_panel.position = item_host.position
+		_inventory_panel.size = item_host.size
 	else:
 		_inventory_panel.position = Vector2(-1000, -1000)
 		_inventory_panel.size = Vector2.ZERO
 
 	if _inspect_panel.visible:
-		_inspect_panel.position = Vector2(left_x + width - 324.0, item_y - 176.0)
-		_inspect_panel.size = Vector2(304, 168)
+		var inspect_size: Vector2 = UITheme.inspect_panel_size(view_size)
+		var inspect_w: float = inspect_size.x
+		var inspect_h: float = inspect_size.y
+		_inspect_panel.position = Vector2(left_x + width - inspect_w - 16.0, item_y - inspect_h - 12.0)
+		_inspect_panel.size = inspect_size
 	else:
 		_inspect_panel.position = Vector2(-1000, -1000)
 		_inspect_panel.size = Vector2.ZERO
 
-	_loot_panel.position = Vector2(left_x + width - 260.0, item_y - 96.0)
-	_loot_panel.size = Vector2(240, 74)
+	var loot_size: Vector2 = UITheme.loot_panel_size(view_size)
+	_loot_panel.position = Vector2(left_x + width - loot_size.x - 16.0, item_y - (88.0 if compact else 96.0))
+	_loot_panel.size = loot_size
 
 	_overlay_panel.position = Vector2(left_x + (width - 360.0) * 0.5, top_y + 96.0)
 	_overlay_panel.size = Vector2(360, 220)
@@ -581,10 +627,12 @@ func _refresh_layout() -> void:
 
 	_augment_panel.position = Vector2(left_x + (width - 340.0) * 0.5, top_y + 88.0)
 	_augment_panel.size = Vector2(340, 180)
+	_layout_refreshing = false
 
 
 func update_synergies(board_units: Array) -> void:
 	for child in _trait_list.get_children():
+		_trait_list.remove_child(child)
 		child.queue_free()
 	_trait_entries.clear()
 	_active_trait_count = 0
@@ -766,16 +814,16 @@ func _on_inventory_changed(items: Array[String]) -> void:
 			bg.color = Color(UITheme.BG_CARD.r, UITheme.BG_CARD.g, UITheme.BG_CARD.b, 0.55)
 	refresh_inventory_selection()
 	_refresh_overview()
-	_refresh_layout()
+	_queue_refresh_layout()
 
 
 func _bind_scene_peers() -> void:
-	var root := get_parent()
+	var root := get_tree().current_scene
 	if root == null:
 		return
-	_board_ui = root.get_node_or_null("BoardUI")
-	_bench_ui = root.get_node_or_null("BenchUI")
-	_shop_ui = root.get_node_or_null("ShopUI")
+	_board_ui = root.find_child("BoardUI", true, false)
+	_bench_ui = root.find_child("BenchUI", true, false)
+	_shop_ui = root.find_child("ShopUI", true, false)
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
 	if root.has_signal("prep_timer_updated") and not root.prep_timer_updated.is_connected(_on_prep_timer_updated):
@@ -850,7 +898,7 @@ func _refresh_overview() -> void:
 	_bench_label.text = "%d/%d" % [_get_bench_count(), _get_bench_capacity()]
 	_refresh_opponent_panel()
 	_refresh_help_text()
-	_refresh_layout()
+	_queue_refresh_layout()
 
 
 func _get_team_count() -> int:
@@ -972,7 +1020,7 @@ func show_inspect_text(text: String) -> void:
 	_inspect_panel.visible = text.strip_edges() != ""
 	if _inspect_panel.visible:
 		_inspect_panel.move_to_front()
-		_refresh_layout()
+		_queue_refresh_layout()
 
 
 func hide_inspect() -> void:
@@ -1123,7 +1171,7 @@ func _refresh_help_text() -> void:
 			"loot":
 				_default_inspect_text = "Loot round. Choose the bundle that best fits your comp."
 			"creep":
-				_default_inspect_text = "Prep: buy units, place them, and press Ready for the creep fight."
+				_default_inspect_text = "Prep: buy, place, and press Ready."
 			"npc", "combat":
 				_default_inspect_text = "Prep: position your team, merge upgrades, and equip items before combat."
 				var threat_hint: String = str(_round_opponent.get("reward_hint", ""))

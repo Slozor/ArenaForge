@@ -66,7 +66,10 @@ func _ready() -> void:
 	_bind_scene_peers()
 	if not get_viewport().size_changed.is_connected(_refresh_layout):
 		get_viewport().size_changed.connect(_refresh_layout)
-	_refresh_layout()
+	var host := get_parent() as Control
+	if host != null and not host.resized.is_connected(_refresh_layout):
+		host.resized.connect(_refresh_layout)
+	call_deferred("_refresh_layout")
 	_draw_board()
 
 
@@ -108,17 +111,17 @@ func select_unit_from_bench(unit) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		_update_hovered_unit(event.position)
+		_update_hovered_unit(to_local(event.position))
 		return
 
 	var tap_pos: Vector2 = Vector2.ZERO
 	var is_tap: bool = false
 
 	if event is InputEventScreenTouch and event.pressed:
-		tap_pos = event.position
+		tap_pos = to_local(event.position)
 		is_tap = true
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		tap_pos = event.position
+		tap_pos = to_local(event.position)
 		is_tap = true
 
 	if not is_tap:
@@ -285,16 +288,13 @@ func _update_tooltip(pointer_pos: Vector2) -> void:
 	if _hud_ui != null and _hud_ui.has_method("show_inspect_text"):
 		_hud_ui.call("show_inspect_text", tooltip_text)
 	var tooltip_pos: Vector2 = pointer_pos + Vector2(16, 16)
-	var view_size: Vector2 = get_viewport_rect().size
+	var view_size: Vector2 = (get_parent() as Control).size if get_parent() is Control else get_viewport_rect().size
 	_tooltip_panel.position = tooltip_pos
 	var panel_size: Vector2 = _tooltip_panel.get_combined_minimum_size()
-	var bench_top: float = view_size.y - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT - UITheme.SHOP_PANEL_HEIGHT - UITheme.UI_STACK_GAP - UITheme.BENCH_PANEL_HEIGHT
 	if tooltip_pos.x + panel_size.x > view_size.x - 8.0:
 		_tooltip_panel.position.x = view_size.x - panel_size.x - 8.0
-	if tooltip_pos.y + panel_size.y > bench_top - 8.0:
+	if tooltip_pos.y + panel_size.y > view_size.y - 8.0:
 		_tooltip_panel.position.y = maxf(8.0, pointer_pos.y - panel_size.y - 20.0)
-	elif tooltip_pos.y + panel_size.y > view_size.y - 8.0:
-		_tooltip_panel.position.y = tooltip_pos.y - panel_size.y - 24.0
 
 
 func remove_unit_instance(unit) -> bool:
@@ -486,15 +486,13 @@ func _draw_lane_labels() -> void:
 
 
 func _bind_scene_peers() -> void:
-	var root: Node = get_parent()
-	if root == null:
-		root = get_tree().current_scene
+	var root: Node = get_tree().current_scene
 	if root == null:
 		return
 
-	_bench_ui = root.get_node_or_null("BenchUI")
-	_hud_ui = root.get_node_or_null("HudUI")
-	_shop_ui = root.get_node_or_null("ShopUI")
+	_bench_ui = root.find_child("BenchUI", true, false)
+	_hud_ui = root.find_child("HudUI", true, false)
+	_shop_ui = root.find_child("ShopUI", true, false)
 
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
@@ -645,17 +643,12 @@ func _theme_glow_color() -> Color:
 
 func _refresh_layout() -> void:
 	var view_size: Vector2 = get_viewport_rect().size
-	var content_w: float = UITheme.content_width(view_size)
-	var content_x: float = UITheme.content_left(view_size)
-	var side_pad: float = clampf(content_w * 0.004, 2.0, 8.0)
-	var side_column: float = clampf(content_w * 0.032, 18.0, 40.0)
-	var top_margin: float = UITheme.TOP_BAR_HEIGHT + UITheme.UI_STACK_GAP
-	var shop_y: float = view_size.y - UITheme.SHOP_PANEL_HEIGHT - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT
-	var bench_y: float = shop_y - UITheme.BENCH_PANEL_HEIGHT - UITheme.UI_STACK_GAP
-	var bottom_limit: float = bench_y - UITheme.UI_STACK_GAP - 6.0
-	_play_rect = Rect2(Vector2(content_x, top_margin), Vector2(content_w, maxf(200.0, bottom_limit - top_margin)))
-	var left_margin: float = side_column + side_pad
-	var right_margin: float = side_column + side_pad
+	var host := get_parent() as Control
+	var play: Rect2 = Rect2(Vector2.ZERO, host.size) if host != null else UITheme.play_rect(view_size)
+	position = Vector2.ZERO
+	_play_rect = play
+	var left_margin: float = 8.0 if host != null else UITheme.side_panel_width(view_size) + clampf(play.size.x * 0.008, 4.0, 12.0)
+	var right_margin: float = 8.0 if host != null else UITheme.side_panel_width(view_size) + clampf(play.size.x * 0.008, 4.0, 12.0)
 	var usable_w: float = maxf(280.0, _play_rect.size.x - left_margin - right_margin)
 	var usable_h: float = maxf(220.0, _play_rect.size.y - 2.0)
 	_cell_size = round(clampf(minf(usable_w / float(COLS), usable_h / float(ROWS)), 68.0, 152.0))

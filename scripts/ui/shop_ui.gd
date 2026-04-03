@@ -30,6 +30,8 @@ var _panel: PanelContainer = null
 var _panel_patch: NinePatchRect = null
 var _cards_row: HBoxContainer = null
 var _buttons_col: VBoxContainer = null
+var _layout_refreshing: bool = false
+var _layout_refresh_pending: bool = false
 
 signal unit_bought(unit_id: String)
 signal unit_hovered(unit_id: String)
@@ -63,8 +65,20 @@ func _ready() -> void:
 	ShopManager.shop_lock_changed.connect(_on_shop_lock_changed)
 	GameManager.gold_changed.connect(_on_gold_changed)
 	_on_shop_lock_changed(ShopManager.is_shop_locked())
-	if not resized.is_connected(_refresh_layout):
-		resized.connect(_refresh_layout)
+	if not resized.is_connected(_queue_refresh_layout):
+		resized.connect(_queue_refresh_layout)
+	_refresh_layout()
+
+
+func _queue_refresh_layout() -> void:
+	if _layout_refresh_pending:
+		return
+	_layout_refresh_pending = true
+	call_deferred("_run_queued_refresh_layout")
+
+
+func _run_queued_refresh_layout() -> void:
+	_layout_refresh_pending = false
 	_refresh_layout()
 
 
@@ -186,17 +200,20 @@ func _make_button(text: String, bg: Color = UITheme.BG_PANEL_ALT, border: Color 
 
 
 func _refresh_layout() -> void:
-	var view_size: Vector2 = get_viewport_rect().size
-	var width: float = UITheme.rail_width(view_size)
-	var left_x: float = UITheme.rail_left(view_size)
-	position = Vector2(left_x, view_size.y - SHOP_HEIGHT - UITheme.BOTTOM_GUTTER - UITheme.LOWER_RAIL_LIFT)
-	size = Vector2(width, SHOP_HEIGHT)
+	if _layout_refreshing:
+		return
+	_layout_refreshing = true
+	position = Vector2.ZERO
+	size = get_parent_area_size()
+	if size.x <= 0.0 or size.y <= 0.0:
+		size = get_viewport_rect().size
 
+	var width: float = size.x
 	var compact: bool = width < 860.0
 	var large: bool = width >= 980.0
-	var card_w: float = 58.0 if compact else (68.0 if large else 62.0)
-	var card_h: float = 66.0 if compact else (78.0 if large else 72.0)
-	_buttons_col.custom_minimum_size = Vector2(58.0 if compact else 64.0, 0.0)
+	var card_w: float = 52.0 if compact else (62.0 if large else 58.0)
+	var card_h: float = 58.0 if compact else (68.0 if large else 62.0)
+	_buttons_col.custom_minimum_size = Vector2(54.0 if compact else 60.0, 0.0)
 	_cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	for card in _cards:
 		if card.has_method("set_card_metrics"):
@@ -204,6 +221,7 @@ func _refresh_layout() -> void:
 		else:
 			card.custom_minimum_size = Vector2(card_w, card_h)
 			card.size = Vector2(card_w, card_h)
+	_layout_refreshing = false
 
 
 func _on_shop_refreshed(unit_ids: Array[String]) -> void:
@@ -243,11 +261,15 @@ func _on_unit_purchased(unit_id: String) -> void:
 func _on_card_tapped(unit_id: String) -> void:
 	if unit_id == "" or _phase != PREP_PHASE:
 		return
-	if _bench_ui == null or not _bench_ui.can_accept_purchase(unit_id):
-		_set_status("Bench full")
-		return
+	if _bench_ui == null:
+		_bind_scene_peers()
 	if not ShopManager.purchase_unit(unit_id):
-		_set_status("Not enough gold")
+		if _bench_ui == null:
+			_set_status("Shop unavailable")
+		elif not _bench_ui.can_accept_purchase(unit_id):
+			_set_status("Bench full")
+		else:
+			_set_status("Not enough gold")
 
 
 func _on_reroll() -> void:
@@ -291,12 +313,12 @@ func _update_affordability() -> void:
 
 
 func _bind_scene_peers() -> void:
-	var root := get_parent()
+	var root := get_tree().current_scene
 	if root == null:
 		return
-	_bench_ui = root.get_node_or_null("BenchUI")
-	_board_ui = root.get_node_or_null("BoardUI")
-	_hud_ui = root.get_node_or_null("HudUI")
+	_bench_ui = root.find_child("BenchUI", true, false)
+	_board_ui = root.find_child("BoardUI", true, false)
+	_hud_ui = root.find_child("HudUI", true, false)
 	if root.has_signal("phase_changed") and not root.phase_changed.is_connected(_on_phase_changed):
 		root.phase_changed.connect(_on_phase_changed)
 	if _board_ui != null:

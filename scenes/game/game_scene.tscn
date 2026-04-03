@@ -20,20 +20,94 @@ stretch_mode = 6
 anchors_preset = 15
 color = Color(0.03, 0.04, 0.06, 0.16)
 
-[node name="BoardUI" type="Node2D" parent="."]
+[node name="UILayer" type="CanvasLayer" parent="."]
+
+[node name="UIRoot" type="Control" parent="UILayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0
+offset_bottom = 0
+
+[node name="MainMargin" type="MarginContainer" parent="UILayer/UIRoot"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0
+offset_bottom = 0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="RootVBox" type="VBoxContainer" parent="UILayer/UIRoot/MainMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="TopBarHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+size_flags_horizontal = 3
+
+[node name="PlayAreaHost" type="HBoxContainer" parent="UILayer/UIRoot/MainMargin/RootVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TraitHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/PlayAreaHost"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+
+[node name="BoardHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/PlayAreaHost"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 1
+
+[node name="BoardUI" type="Node2D" parent="UILayer/UIRoot/MainMargin/RootVBox/PlayAreaHost/BoardHost"]
 script = ExtResource("2")
 
-[node name="HighlightLayer" type="Node2D" parent="BoardUI"]
+[node name="HighlightLayer" type="Node2D" parent="UILayer/UIRoot/MainMargin/RootVBox/PlayAreaHost/BoardHost/BoardUI"]
 
-[node name="HudUI" type="Control" parent="."]
+[node name="OpponentHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/PlayAreaHost"]
+layout_mode = 2
+custom_minimum_size = Vector2(124, 0)
+
+[node name="BottomAreaHost" type="VBoxContainer" parent="UILayer/UIRoot/MainMargin/RootVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ItemHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/BottomAreaHost"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+
+[node name="BenchHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/BottomAreaHost"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 76)
+size_flags_horizontal = 3
+
+[node name="ShopHost" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/BottomAreaHost"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+size_flags_horizontal = 3
+
+[node name="HudUI" type="Control" parent="UILayer/UIRoot"]
 script = ExtResource("1")
 layout_mode = 3
 anchors_preset = 15
-anchor_bottom = 1.0
 anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0
 offset_bottom = 0
 
-[node name="BenchUI" type="Control" parent="."]
+[node name="BenchUI" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/BottomAreaHost/BenchHost"]
 script = ExtResource("3")
 layout_mode = 3
 anchors_preset = 15
@@ -42,7 +116,7 @@ anchor_bottom = 1.0
 offset_right = 0
 offset_bottom = 0
 
-[node name="ShopUI" type="Control" parent="."]
+[node name="ShopUI" type="Control" parent="UILayer/UIRoot/MainMargin/RootVBox/BottomAreaHost/ShopHost"]
 script = ExtResource("4")
 layout_mode = 3
 anchors_preset = 15
