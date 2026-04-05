@@ -31,6 +31,7 @@ var shop_units: Array[String] = []
 var unit_pool: Dictionary = {}  # unit_id -> remaining count
 var _shop_locked: bool = false
 var _pool_initialized: bool = false
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 signal shop_refreshed(units: Array[String])
 signal unit_purchased(unit_id: String)
@@ -38,6 +39,7 @@ signal shop_lock_changed(locked: bool)
 
 
 func _ready() -> void:
+	_rng.randomize()
 	# Initialize pool after DataManager has loaded data
 	call_deferred("_initialize_pool")
 
@@ -133,7 +135,7 @@ func return_unit_to_pool(unit_id: String) -> void:
 
 
 func _draw_unit_by_odds(odds: Array) -> String:
-	var roll: int = randi() % 100
+	var roll: int = _rng.randi() % 100
 	var tier: int = 1
 	var cumulative: int = 0
 	for i in odds.size():
@@ -156,7 +158,7 @@ func _draw_unit_by_odds(odds: Array) -> String:
 		if candidates.is_empty():
 			return ""
 
-	var selected_unit: String = candidates[randi() % candidates.size()]
+	var selected_unit: String = candidates[_rng.randi() % candidates.size()]
 	unit_pool[selected_unit] = maxi(0, unit_pool.get(selected_unit, 0) - 1)
 	return selected_unit
 

@@ -38,6 +38,8 @@ var _burn_targets: Dictionary = {}
 var _slow_targets: Dictionary = {}
 # Attack speed haste: unit id -> { timer, original_temp_mod }
 var _haste_targets: Dictionary = {}
+# Quick lookup: instance_id -> unit (populated in start())
+var _unit_map: Dictionary = {}
 
 signal unit_attacked(attacker, target, damage: int)
 signal unit_moved(unit, to: Vector2i)
@@ -60,9 +62,11 @@ func start(p_units: Array, e_units: Array, battle_modifiers: Dictionary = {}) ->
 	_slow_targets.clear()
 	_haste_targets.clear()
 
+	_unit_map.clear()
 	for unit in player_units + enemy_units:
 		unit.reset_combat_state()
 		_register_position(unit)
+		_unit_map[unit.get_instance_id()] = unit
 
 	# Initialize per-unit state
 	for unit in player_units + enemy_units:
@@ -130,6 +134,7 @@ func _apply_side_modifiers(unit, modifiers: Dictionary) -> void:
 
 func stop() -> void:
 	_is_running = false
+	_unit_map.clear()
 
 
 func _process(delta: float) -> void:
@@ -387,12 +392,11 @@ func _tick_burn(delta: float) -> void:
 		var b: Dictionary = _burn_targets[id]
 		b["timer"] -= delta
 		b["accumulator"] += float(b.get("dps", 0)) * delta
-		for unit in player_units + enemy_units:
-			if unit.get_instance_id() == id and int(unit.state) != DEAD_STATE:
-				while b["accumulator"] >= 1.0 and int(unit.state) != DEAD_STATE:
-					b["accumulator"] -= 1.0
-					unit.take_damage(1, true)
-				break
+		var unit = _unit_map.get(id)
+		if unit != null and int(unit.state) != DEAD_STATE:
+			while b["accumulator"] >= 1.0 and int(unit.state) != DEAD_STATE:
+				b["accumulator"] -= 1.0
+				unit.take_damage(1, true)
 		if b["timer"] <= 0.0:
 			expired.append(id)
 		else:
@@ -513,10 +517,9 @@ func _tick_slow_effects(delta: float) -> void:
 		var entry: Dictionary = _slow_targets[id]
 		entry["timer"] -= delta
 		if entry["timer"] <= 0.0:
-			for unit in player_units + enemy_units:
-				if unit.get_instance_id() == id and int(unit.state) != DEAD_STATE:
-					unit.temp_attack_speed_mod = float(entry.get("original_temp_mod", 0.0))
-					break
+			var unit = _unit_map.get(id)
+			if unit != null and int(unit.state) != DEAD_STATE:
+				unit.temp_attack_speed_mod = float(entry.get("original_temp_mod", 0.0))
 			expired.append(id)
 		else:
 			_slow_targets[id] = entry
@@ -530,10 +533,9 @@ func _tick_haste_effects(delta: float) -> void:
 		var entry: Dictionary = _haste_targets[id]
 		entry["timer"] -= delta
 		if entry["timer"] <= 0.0:
-			for unit in player_units + enemy_units:
-				if unit.get_instance_id() == id and int(unit.state) != DEAD_STATE:
-					unit.temp_attack_speed_mod = float(entry.get("original_temp_mod", 0.0))
-					break
+			var unit = _unit_map.get(id)
+			if unit != null and int(unit.state) != DEAD_STATE:
+				unit.temp_attack_speed_mod = float(entry.get("original_temp_mod", 0.0))
 			expired.append(id)
 		else:
 			_haste_targets[id] = entry

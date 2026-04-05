@@ -14,7 +14,7 @@ const ARENA_STONE_TOP: Texture2D = preload("res://assets/kenney_tiny_dungeon/Til
 const ARENA_STONE_TOP_RIGHT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0040.png")
 const ARENA_STONE_BOTTOM_LEFT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0036.png")
 const ARENA_STONE_BOTTOM: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0039.png")
-const ARENA_STONE_BOTTOM_RIGHT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0040.png")
+const ARENA_STONE_BOTTOM_RIGHT: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0042.png")
 const ARENA_TORCH: Texture2D = preload("res://assets/kenney_tiny_dungeon/Tiles/tile_0053.png")
 
 const COLS: int = 7
@@ -317,9 +317,7 @@ func _find_unit_at_position(pointer_pos: Vector2):
 	for child in get_children():
 		if child == null or not is_instance_valid(child):
 			continue
-		if not (child is Node2D):
-			continue
-		if not child.has_method("get_attack_damage"):
+		if not (child is Unit):
 			continue
 		if not child.visible:
 			continue
@@ -664,7 +662,7 @@ func _refresh_layout() -> void:
 			continue
 		if not (child is Node2D):
 			continue
-		if not child.has_method("get_attack_damage"):
+		if not (child is Unit):
 			continue
 		if child.has_method("set"):
 			child.set("unit_visual_scale", clampf(_cell_size / 72.0, 1.3, 2.4))

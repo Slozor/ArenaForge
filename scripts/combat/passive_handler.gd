@@ -109,12 +109,13 @@ static func on_death(unit, state: Dictionary, nearby_enemies: Array) -> void:
 			state["curse_targets"] = []
 			for enemy in nearby_enemies:
 				if int(enemy.state) != DEAD_STATE:
-					# −20% attack damage for 3 seconds
-					var amount: int = int(float(enemy.get_attack_damage()) * 0.20)
-					enemy.attack_damage = maxi(0, enemy.attack_damage - amount)
+					# −20% of base attack damage for 3 seconds
+					var amount: int = int(float(enemy.attack_damage) * 0.20)
+					var deducted: int = mini(amount, enemy.attack_damage)
+					enemy.attack_damage = maxi(0, enemy.attack_damage - deducted)
 					state["curse_targets"].append({
 						"unit": enemy,
-						"amount": amount
+						"amount": deducted
 					})
 
 
